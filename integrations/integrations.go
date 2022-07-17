@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/nmcapule/oclz-go/integrations/intent"
 	"github.com/nmcapule/oclz-go/integrations/models"
 	"github.com/nmcapule/oclz-go/integrations/oauth2"
 	"github.com/nmcapule/oclz-go/integrations/tiktok"
@@ -24,45 +25,51 @@ func LoadClient(dao *daos.Dao, tenantName string) (models.VendorClient, error) {
 	}
 
 	oauth2Service := &oauth2.Service{Dao: dao}
-
-	tenant := record.GetId()
-	vendor := record.GetStringDataValue("vendor")
-	configRaw := record.GetStringDataValue("config")
-
-	switch vendor {
+	tenant := models.TenantFrom(record)
+	switch tenant.Vendor {
+	case intent.Vendor:
+		var config intent.Config
+		err := json.Unmarshal(tenant.Config, &config)
+		if err != nil {
+			return nil, err
+		}
+		return &intent.Client{
+			BaseTenant: tenant,
+			Dao:        dao,
+		}, nil
 	case tiktok.Vendor:
 		var config tiktok.Config
-		err := json.Unmarshal([]byte(configRaw), &config)
+		err := json.Unmarshal(tenant.Config, &config)
 		if err != nil {
 			return nil, err
 		}
-		credentials, err := oauth2Service.Load(tenant)
+		credentials, err := oauth2Service.Load(tenant.ID)
 		if err != nil {
 			return nil, err
 		}
-
 		return &tiktok.Client{
-			Name:        tenantName,
+			BaseTenant:  tenant,
 			Config:      &config,
 			Credentials: credentials,
 		}, nil
 	default:
-		return nil, fmt.Errorf("unsupported vendor %q", vendor)
+		return nil, fmt.Errorf("unsupported vendor %q", tenant.Vendor)
 	}
 }
 
 // Syncer orchestrates how to sync items across multiple tenants.
 type Syncer struct {
+	TenantGroupName string
 	Dao             *daos.Dao
 	Tenants         map[string]models.VendorClient
-	TenantGroupName string
+	IntentTenant    models.VendorClient
 }
 
 // NewSyncer creates a new syncer instance.
 func NewSyncer(dao *daos.Dao, tenantGroupName string) (*Syncer, error) {
 	s := &Syncer{
-		Dao:             dao,
 		TenantGroupName: tenantGroupName,
+		Dao:             dao,
 	}
 	err := s.registerTenantGroup(tenantGroupName)
 	return s, err
@@ -107,47 +114,88 @@ func (s *Syncer) register(tenantName string) error {
 		s.Tenants = make(map[string]models.VendorClient)
 	}
 	s.Tenants[tenantName] = tenant
+	if tenant.Tenant().Vendor == intent.Vendor {
+		s.IntentTenant = tenant
+	}
 	return nil
 }
 
-type baseItem struct {
-	sellerSKU string
-	stocks    int
+func (s *Syncer) NonIntentTenants() []models.VendorClient {
+	var tenants []models.VendorClient
+	for _, client := range s.Tenants {
+		if client.Tenant().Vendor != intent.Vendor {
+			tenants = append(tenants, client)
+		}
+	}
+	return tenants
 }
 
-func (b *baseItem) SellerSKU() string { return b.sellerSKU }
-func (b *baseItem) Stocks() int       { return b.stocks }
-
-func (s *Syncer) Inventory(tenantName, sellerSKU string) (models.Item, error) {
-	collection, err := s.Dao.FindCollectionByNameOrId("inventory")
+func (s *Syncer) TenantInventory(tenantName, sellerSKU string) (*models.Item, error) {
+	collection, err := s.Dao.FindCollectionByNameOrId("tenant_inventory")
 	if err != nil {
 		return nil, err
 	}
-	record, err := s.Dao.FindFirstRecordByData(collection, "seller_sku", sellerSKU)
+	inventory, err := s.Dao.FindRecordsByExpr(collection, dbx.HashExp{
+		"tenant":     s.Tenants[tenantName].Tenant().ID,
+		"seller_sku": sellerSKU,
+	})
 	if err != nil {
 		return nil, err
 	}
-	return &baseItem{
-		sellerSKU: record.GetStringDataValue("seller_sku"),
-		stocks:    record.GetIntDataValue("stocks"),
-	}, nil
+	if len(inventory) == 0 {
+		return nil, models.ErrNotFound
+	}
+	if len(inventory) > 1 {
+		return nil, models.ErrMultipleItems
+	}
+	return models.ItemFrom(inventory[0]), nil
 }
 
-func (s *Syncer) TenantInventory(tenantName, sellerSKU string) (models.Item, error) {
-	collection, err := s.Dao.FindCollectionByNameOrId("inventory")
+func (s *Syncer) SaveTenantInventory(tenantName string, item *models.Item) error {
+	collection, err := s.Dao.FindCollectionByNameOrId("tenant_inventory")
 	if err != nil {
-		return nil, err
+		return err
 	}
-	record, err := s.Dao.FindFirstRecordByData(collection, "seller_sku", sellerSKU)
-	if err != nil {
-		return nil, err
-	}
-	log.Println(record)
-	return nil, nil
+	return s.Dao.SaveRecord(item.ToRecord(collection))
 }
 
 // SyncItem tries to sync a single seller sku across all tenants.
 func (s *Syncer) SyncItem(sellerSKU string) error {
+	tenantItemMap := make(map[string]*models.Item)
+	var totalDelta int
+	for _, tenant := range s.Tenants {
+		item, err := tenant.LoadItem(sellerSKU)
+		if err != nil {
+			return fmt.Errorf("loading live item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
+		}
+		cached, err := s.TenantInventory(tenant.Tenant().Name, sellerSKU)
+		if err != nil {
+			return fmt.Errorf("loading cached item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
+		}
+		totalDelta += item.Stocks - cached.Stocks
+		tenantItemMap[tenant.Tenant().Name] = item
+	}
+
+	targetStocks := tenantItemMap[s.IntentTenant.Tenant().Name].Stocks
+	targetStocks += totalDelta
+	if targetStocks < 0 {
+		log.Printf("warning: %s has negative stocks, setting to 0", sellerSKU)
+	}
+
+	for _, tenant := range s.Tenants {
+		item := tenantItemMap[tenant.Tenant().Name]
+		// Skip update if has the same stock as the intent tenant.
+		if item.Stocks == targetStocks {
+			continue
+		}
+		item.Stocks = targetStocks
+		if err := tenant.SaveItem(item); err != nil {
+			return fmt.Errorf("saving live item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
+		}
+		if err := s.SaveTenantInventory(tenant.Tenant().Name, item); err != nil {
+			return fmt.Errorf("saving cached item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
+		}
+	}
 
 	return nil
 }

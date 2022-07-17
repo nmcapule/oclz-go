@@ -13,12 +13,12 @@ func main() {
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		go func(app *pocketbase.PocketBase) {
-			syncer, err := integrations.LoadClient(app.Dao(), "CIRCUIT_ROCKS_TIKTOK")
+			_, err := integrations.LoadClient(app.Dao(), "CIRCUIT_ROCKS_TIKTOK")
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			syncer.CollectAllItems()
+			// syncer.CollectAllItems()
 		}(app)
 
 		return nil

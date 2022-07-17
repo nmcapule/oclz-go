@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -23,28 +22,11 @@ import (
 // Vendor is key name for tiktok clients.
 const Vendor = "TIKTOK"
 
-var errUnimplemented = errors.New("not yet implemented")
-
 type response struct {
 	Code      int             `json:"code"`
 	Data      json.RawMessage `json:"data"`
 	Message   string          `json:"message"`
 	RequestID string          `json:"request_id"`
-}
-
-type Item struct {
-	productID string
-	skuID     string
-	sellerSKU string
-	stocks    int
-}
-
-func (i *Item) Stocks() int {
-	return i.stocks
-}
-
-func (i *Item) SellerSKU() string {
-	return i.sellerSKU
 }
 
 // Config is a tiktok config.
@@ -58,23 +40,13 @@ type Config struct {
 
 // Client is a tiktok client.
 type Client struct {
-	Name        string
+	*models.BaseTenant
 	Config      *Config
 	Credentials *oauth2.Credentials
 }
 
-// Vendor returns the tenant name.
-func (c *Client) TenantName() string {
-	return c.Name
-}
-
-// Vendor returns the vendor name.
-func (c *Client) Vendor() string {
-	return Vendor
-}
-
 // CollectAllItems collects and returns all items registered in this client.
-func (c *Client) CollectAllItems() ([]models.Item, error) {
+func (c *Client) CollectAllItems() ([]*models.Item, error) {
 	if c.Config.WarehouseID == "" {
 		res, err := c.get("/api/logistics/get_warehouse_list", nil)
 		if err != nil {
@@ -83,7 +55,7 @@ func (c *Client) CollectAllItems() ([]models.Item, error) {
 		c.Config.WarehouseID = gjson.GetBytes(res.Data, "warehouse_list.#(warehouse_type==1).warehouse_id").String()
 	}
 
-	var items []models.Item
+	var items []*models.Item
 	page := 1
 	pageSize := 50
 	for {
@@ -103,11 +75,11 @@ func (c *Client) CollectAllItems() ([]models.Item, error) {
 					stocks += int(info.Get("available_stock").Int())
 					return true
 				})
-				items = append(items, &Item{
-					productID: product.Get("id").String(),
-					skuID:     sku.Get("id").String(),
-					sellerSKU: sku.Get("seller_sku").String(),
-					stocks:    stocks,
+				items = append(items, &models.Item{
+					SellerSKU: sku.Get("seller_sku").String(),
+					Stocks:    stocks,
+					// productID: product.Get("id").String(),
+					// skuID:     sku.Get("id").String(),
 				})
 				return true
 			})
@@ -125,13 +97,13 @@ func (c *Client) CollectAllItems() ([]models.Item, error) {
 }
 
 // LoadItem returns item info for a single SKU.
-func (c *Client) LoadItem(sku string) (models.Item, error) {
-	return nil, errUnimplemented
+func (c *Client) LoadItem(sku string) (*models.Item, error) {
+	return nil, models.ErrUnimplemented
 }
 
 // SaveItem saves item info for a single SKU.
-func (c *Client) SaveItem(item models.Item) error {
-	return errUnimplemented
+func (c *Client) SaveItem(item *models.Item) error {
+	return models.ErrUnimplemented
 }
 
 func (c *Client) signature(endpoint string, query url.Values) string {
