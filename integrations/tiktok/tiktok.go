@@ -58,8 +58,14 @@ type Config struct {
 
 // Client is a tiktok client.
 type Client struct {
+	Name        string
 	Config      *Config
 	Credentials *oauth2.Credentials
+}
+
+// Vendor returns the tenant name.
+func (c *Client) TenantName() string {
+	return c.Name
 }
 
 // Vendor returns the vendor name.
@@ -153,11 +159,9 @@ func (c *Client) prepareURL(endpoint string, query url.Values) string {
 	if query == nil {
 		query = make(url.Values)
 	}
-
 	query.Set("timestamp", fmt.Sprintf("%d", time.Now().Unix()))
 	query.Set("app_key", c.Config.AppKey)
 	query.Set("shop_id", c.Config.ShopID)
-
 	query.Set("sign", c.signature(endpoint, query))
 	query.Set("access_token", c.Credentials.AccessToken)
 
@@ -175,6 +179,8 @@ func (c *Client) get(endpoint string, query url.Values) (*response, error) {
 
 	var response response
 	err = json.NewDecoder(res.Body).Decode(&response)
+	log.Printf("Code: %d, Message: %q, RequestID: %s", response.Code, response.Message, response.RequestID)
+
 	return &response, err
 }
 
@@ -190,12 +196,10 @@ func (c *Client) post(endpoint string, payload interface{}, query url.Values) (*
 		return nil, err
 	}
 	defer res.Body.Close()
-
 	log.Println(res.Request.Method, url)
 
 	var response response
 	err = json.NewDecoder(res.Body).Decode(&response)
-
 	log.Printf("Code: %d, Message: %q, RequestID: %s", response.Code, response.Message, response.RequestID)
 
 	return &response, err

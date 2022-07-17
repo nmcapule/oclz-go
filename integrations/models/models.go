@@ -8,6 +8,7 @@ type Item interface {
 
 // VendorClient is an interface for any vendor clients.
 type VendorClient interface {
+	TenantName() string
 	Vendor() string
 	CollectAllItems() ([]Item, error)
 	LoadItem(sku string) (Item, error)
