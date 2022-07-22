@@ -1,4 +1,4 @@
-package integrations
+package syncer
 
 import (
 	"encoding/json"
@@ -6,8 +6,8 @@ import (
 
 	"github.com/nmcapule/oclz-go/integrations/intent"
 	"github.com/nmcapule/oclz-go/integrations/models"
-	"github.com/nmcapule/oclz-go/integrations/oauth2"
 	"github.com/nmcapule/oclz-go/integrations/tiktok"
+	"github.com/nmcapule/oclz-go/oauth2"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/daos"
 

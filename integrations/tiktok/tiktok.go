@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/nmcapule/oclz-go/integrations/models"
-	"github.com/nmcapule/oclz-go/integrations/oauth2"
+	"github.com/nmcapule/oclz-go/oauth2"
 	"github.com/tidwall/gjson"
 
 	log "github.com/sirupsen/logrus"

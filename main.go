@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/nmcapule/oclz-go/integrations"
+	"github.com/nmcapule/oclz-go/syncer"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 
@@ -13,7 +13,7 @@ func main() {
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		go func(app *pocketbase.PocketBase) {
-			syncer, err := integrations.NewSyncer(app.Dao(), "circuit.rocks")
+			syncer, err := syncer.NewSyncer(app.Dao(), "circuit.rocks")
 			if err != nil {
 				log.Fatal("intantiate syncer: %v", err)
 			}
