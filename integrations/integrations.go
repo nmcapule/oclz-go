@@ -3,7 +3,6 @@ package integrations
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/nmcapule/oclz-go/integrations/intent"
 	"github.com/nmcapule/oclz-go/integrations/models"
@@ -11,6 +10,8 @@ import (
 	"github.com/nmcapule/oclz-go/integrations/tiktok"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/daos"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // LoadClient loads a client depending on the config vendor.
@@ -90,17 +91,20 @@ func (s *Syncer) registerTenantGroup(tenantGroupName string) error {
 		return err
 	}
 	records, err := s.Dao.FindRecordsByExpr(tenants, dbx.HashExp{
-		"tenant_group": group.GetStringDataValue("id"),
+		"tenant_group": group.GetId(),
 	})
 	if err != nil {
 		return err
 	}
-	for _, record := range records {
-		if err := s.register(record.GetStringDataValue("name")); err != nil {
+
+	for _, tenant := range records {
+		if !tenant.GetBoolDataValue("enable") {
+			continue
+		}
+		if err := s.register(tenant.GetStringDataValue("name")); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -152,11 +156,51 @@ func (s *Syncer) TenantInventory(tenantName, sellerSKU string) (*models.Item, er
 }
 
 func (s *Syncer) SaveTenantInventory(tenantName string, item *models.Item) error {
+	tenant := s.Tenants[tenantName]
+	item.TenantID = tenant.Tenant().ID
+
+	if tenantName == s.IntentTenant.Tenant().Name {
+		return s.IntentTenant.SaveItem(item)
+	}
+
 	collection, err := s.Dao.FindCollectionByNameOrId("tenant_inventory")
 	if err != nil {
 		return err
 	}
 	return s.Dao.SaveRecord(item.ToRecord(collection))
+}
+
+func (s *Syncer) CollectAllItems() error {
+	intentItems, err := s.IntentTenant.CollectAllItems()
+	if err != nil {
+		return err
+	}
+	intentItemsLookup := make(map[string]struct{})
+	for _, item := range intentItems {
+		intentItemsLookup[item.SellerSKU] = struct{}{}
+	}
+
+	var itemsOutsideIntent []*models.Item
+	for _, tenant := range s.NonIntentTenants() {
+		items, err := tenant.CollectAllItems()
+		if err != nil {
+			return err
+		}
+		for i, item := range items {
+			if _, ok := intentItemsLookup[item.SellerSKU]; !ok {
+				itemsOutsideIntent = append(itemsOutsideIntent, items[i])
+			}
+		}
+	}
+
+	for _, item := range itemsOutsideIntent {
+		err := s.SaveTenantInventory(s.IntentTenant.Tenant().Name, item)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // SyncItem tries to sync a single seller sku across all tenants.

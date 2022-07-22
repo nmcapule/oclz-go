@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"sort"
@@ -17,10 +16,25 @@ import (
 	"github.com/nmcapule/oclz-go/integrations/models"
 	"github.com/nmcapule/oclz-go/integrations/oauth2"
 	"github.com/tidwall/gjson"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // Vendor is key name for tiktok clients.
 const Vendor = "TIKTOK"
+
+type ItemTenantProps struct {
+	ProductID string `json:"product_id"`
+	SKUID     string `json:"sku_id"`
+}
+
+func (p ItemTenantProps) MustToGJSON() gjson.Result {
+	b, err := json.Marshal(p)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return gjson.ParseBytes(b)
+}
 
 type response struct {
 	Code      int             `json:"code"`
@@ -78,8 +92,10 @@ func (c *Client) CollectAllItems() ([]*models.Item, error) {
 				items = append(items, &models.Item{
 					SellerSKU: sku.Get("seller_sku").String(),
 					Stocks:    stocks,
-					// productID: product.Get("id").String(),
-					// skuID:     sku.Get("id").String(),
+					TenantProps: ItemTenantProps{
+						ProductID: product.Get("product_id").String(),
+						SKUID:     sku.Get("sku_id").String(),
+					}.MustToGJSON(),
 				})
 				return true
 			})
