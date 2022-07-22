@@ -167,7 +167,8 @@ func (s *Syncer) SaveTenantInventory(tenantName string, item *models.Item) error
 	if err != nil {
 		return err
 	}
-	return s.Dao.SaveRecord(item.ToRecord(collection))
+	record := item.ToRecord(collection)
+	return s.Dao.SaveRecord(record)
 }
 
 func (s *Syncer) CollectAllItems() error {
@@ -187,6 +188,15 @@ func (s *Syncer) CollectAllItems() error {
 			return err
 		}
 		for i, item := range items {
+			_, err := s.TenantInventory(tenant.Tenant().Name, item.SellerSKU)
+			if err == models.ErrNotFound {
+				log.Infof("recording tenant inventory: %s: %s", tenant.Tenant().Name, item.SellerSKU)
+				err = s.SaveTenantInventory(tenant.Tenant().Name, item)
+			}
+			if err != nil {
+				return err
+			}
+
 			if _, ok := intentItemsLookup[item.SellerSKU]; !ok {
 				itemsOutsideIntent = append(itemsOutsideIntent, items[i])
 			}
@@ -217,6 +227,9 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 			return fmt.Errorf("loading cached item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
 		}
 		totalDelta += item.Stocks - cached.Stocks
+
+		item.ID = cached.ID
+		item.Created = cached.Created
 		tenantItemMap[tenant.Tenant().Name] = item
 	}
 

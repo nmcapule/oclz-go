@@ -41,7 +41,7 @@ func ItemFrom(record *pbm.Record) *Item {
 func (i *Item) ToRecord(collection *pbm.Collection) *pbm.Record {
 	record := pbm.NewRecord(collection)
 	if i.ID != "" {
-		record.SetDataValue("id", i.ID)
+		record.Id = i.ID
 	}
 	record.SetDataValue("tenant", i.TenantID)
 	record.SetDataValue("seller_sku", i.SellerSKU)
