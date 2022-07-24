@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/nmcapule/oclz-go/syncer"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
@@ -14,18 +16,28 @@ func daemon(app *pocketbase.PocketBase) {
 		log.Fatal("intantiate syncer: %v", err)
 	}
 
-	if err := syncer.CollectAllItems(); err != nil {
-		log.Fatal("collect all live tenant items: %v", err)
-	}
+	inventoryRefreshInterval := 24 * time.Hour
+	nextInventorySchedule := time.Now()
+	for {
+		if time.Now().After(nextInventorySchedule) {
+			log.Info("collect inventory...")
+			if err := syncer.CollectAllItems(); err != nil {
+				log.Fatal("collect all live tenant items: %v", err)
+			}
+			nextInventorySchedule = nextInventorySchedule.Add(inventoryRefreshInterval)
+			continue
+		}
 
-	intentItems, err := syncer.IntentTenant.CollectAllItems()
-	if err != nil {
-		log.Fatalf("collect all intent items: %v", err)
-	}
-	for _, item := range intentItems {
-		err := syncer.SyncItem(item.SellerSKU)
+		log.Info("sync inventory...")
+		intentItems, err := syncer.IntentTenant.CollectAllItems()
 		if err != nil {
-			log.Fatalf("syncing %q: %v", item.SellerSKU, err)
+			log.Fatalf("collect all intent items: %v", err)
+		}
+		for _, item := range intentItems {
+			err := syncer.SyncItem(item.SellerSKU)
+			if err != nil {
+				log.Fatalf("syncing %q: %v", item.SellerSKU, err)
+			}
 		}
 	}
 }
