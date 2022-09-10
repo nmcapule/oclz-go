@@ -211,7 +211,7 @@ func (c *Client) http(method string, endpoint string, query url.Values, payload 
 		"method":  method,
 		"url":     url,
 		"payload": string(message),
-	}).Println("HTTP Request", string(message))
+	}).Infoln("HTTP Request", string(message))
 
 	var response response
 	err = json.NewDecoder(res.Body).Decode(&response)

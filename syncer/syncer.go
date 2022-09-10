@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/nmcapule/oclz-go/integrations/intent"
+	"github.com/nmcapule/oclz-go/integrations/lazada"
 	"github.com/nmcapule/oclz-go/integrations/models"
 	"github.com/nmcapule/oclz-go/integrations/tiktok"
 	"github.com/nmcapule/oclz-go/oauth2"
@@ -49,6 +50,21 @@ func LoadClient(dao *daos.Dao, tenantName string) (models.VendorClient, error) {
 			return nil, err
 		}
 		return &tiktok.Client{
+			BaseTenant:  tenant,
+			Config:      &config,
+			Credentials: credentials,
+		}, nil
+	case lazada.Vendor:
+		var config lazada.Config
+		err := json.Unmarshal(tenant.Config, &config)
+		if err != nil {
+			return nil, err
+		}
+		credentials, err := oauth2Service.Load(tenant.ID)
+		if err != nil {
+			return nil, err
+		}
+		return &lazada.Client{
 			BaseTenant:  tenant,
 			Config:      &config,
 			Credentials: credentials,
@@ -174,27 +190,39 @@ func (s *Syncer) SaveTenantInventory(tenantName string, item *models.Item) error
 func (s *Syncer) CollectAllItems() error {
 	intentItems, err := s.IntentTenant.CollectAllItems()
 	if err != nil {
-		return err
+		return fmt.Errorf("collect intent items: %v", err)
 	}
 	intentItemsLookup := make(map[string]struct{})
 	for _, item := range intentItems {
 		intentItemsLookup[item.SellerSKU] = struct{}{}
 	}
 
+	// Collect all items that are not intent items.
 	var itemsOutsideIntent []*models.Item
 	for _, tenant := range s.NonIntentTenants() {
 		items, err := tenant.CollectAllItems()
 		if err != nil {
-			return err
+			return fmt.Errorf("collect tenant items: %v", err)
 		}
 		for i, item := range items {
 			_, err := s.TenantInventory(tenant.Tenant().Name, item.SellerSKU)
+			// If not found, means that this is the first time we detected
+			// the item on this tenant.
 			if err == models.ErrNotFound {
 				log.Infof("recording tenant inventory: %s: %s", tenant.Tenant().Name, item.SellerSKU)
-				err = s.SaveTenantInventory(tenant.Tenant().Name, item)
+				// Get fresh copy from the tenant.
+				fresh, err := tenant.LoadItem(item.SellerSKU)
+				if err != nil {
+					return fmt.Errorf("get fresh item: %v", err)
+				}
+				// Save fresh copy to the tenant inventory.
+				err = s.SaveTenantInventory(tenant.Tenant().Name, fresh)
+				if err != nil {
+					return fmt.Errorf("save fresh item: %v", err)
+				}
 			}
 			if err != nil {
-				return err
+				return fmt.Errorf("retrieving cached item: %v", err)
 			}
 
 			if _, ok := intentItemsLookup[item.SellerSKU]; !ok {
@@ -203,10 +231,11 @@ func (s *Syncer) CollectAllItems() error {
 		}
 	}
 
+	// Save all new items that are not in the intent into the intent.
 	for _, item := range itemsOutsideIntent {
 		err := s.SaveTenantInventory(s.IntentTenant.Tenant().Name, item)
 		if err != nil {
-			return err
+			return fmt.Errorf("save tenant items: %v", err)
 		}
 	}
 
@@ -223,6 +252,13 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 			return fmt.Errorf("loading live item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
 		}
 		cached, err := s.TenantInventory(tenant.Tenant().Name, sellerSKU)
+		if err == models.ErrNotFound {
+			log.WithFields(log.Fields{
+				"seller_sku": sellerSKU,
+				"tenant":     tenant.Tenant().Name,
+			}).Infoln("Item not found")
+			continue
+		}
 		if err != nil {
 			return fmt.Errorf("loading cached item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
 		}
@@ -240,7 +276,14 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 	}
 
 	for _, tenant := range s.Tenants {
-		item := tenantItemMap[tenant.Tenant().Name]
+		item, ok := tenantItemMap[tenant.Tenant().Name]
+		if !ok {
+			log.WithFields(log.Fields{
+				"seller_sku": sellerSKU,
+				"tenant":     tenant.Tenant().Name,
+			}).Infoln("Skip item sync, does not exist in tenant")
+			continue
+		}
 		// Skip update if has the same stock as the intent tenant.
 		if item.Stocks == targetStocks {
 			continue
