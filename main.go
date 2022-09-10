@@ -38,14 +38,19 @@ func daemon(app *pocketbase.PocketBase) {
 			if err != nil {
 				log.Fatalf("syncing %q: %v", item.SellerSKU, err)
 			}
+			time.Sleep(500 * time.Millisecond)
 		}
 	}
 }
 
 func main() {
 	app := pocketbase.New()
+	noSync := app.RootCmd.PersistentFlags().Bool("nosync", true, "Set to true to deactivate syncing.")
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
+		if *noSync {
+			return nil
+		}
 		go daemon(app)
 		return nil
 	})

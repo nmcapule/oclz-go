@@ -1,0 +1,281 @@
+[
+    {
+        "id": "Kdep9T0CaQYvGlv",
+        "name": "profiles",
+        "system": true,
+        "listRule": "userId = @request.user.id",
+        "viewRule": "userId = @request.user.id",
+        "createRule": "userId = @request.user.id",
+        "updateRule": "userId = @request.user.id",
+        "deleteRule": null,
+        "schema": [
+            {
+                "id": "eov87bpz",
+                "name": "userId",
+                "type": "user",
+                "system": true,
+                "required": true,
+                "unique": true,
+                "options": {
+                    "maxSelect": 1,
+                    "cascadeDelete": true
+                }
+            },
+            {
+                "id": "rzanfppq",
+                "name": "name",
+                "type": "text",
+                "system": false,
+                "required": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "id": "b3fbmuux",
+                "name": "avatar",
+                "type": "file",
+                "system": false,
+                "required": false,
+                "unique": false,
+                "options": {
+                    "maxSelect": 1,
+                    "maxSize": 5242880,
+                    "mimeTypes": [
+                        "image/jpg",
+                        "image/jpeg",
+                        "image/png",
+                        "image/svg+xml",
+                        "image/gif"
+                    ],
+                    "thumbs": null
+                }
+            }
+        ]
+    },
+    {
+        "id": "I40zuQXUFwunlfd",
+        "name": "tenants",
+        "system": false,
+        "listRule": null,
+        "viewRule": null,
+        "createRule": null,
+        "updateRule": null,
+        "deleteRule": null,
+        "schema": [
+            {
+                "id": "iyjea76y",
+                "name": "name",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "unique": true,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": "^\\w+$"
+                }
+            },
+            {
+                "id": "bqgjymjd",
+                "name": "config",
+                "type": "json",
+                "system": false,
+                "required": true,
+                "unique": false,
+                "options": {}
+            },
+            {
+                "id": "bsfklzfu",
+                "name": "vendor",
+                "type": "select",
+                "system": false,
+                "required": true,
+                "unique": false,
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "DEFAULT",
+                        "OPENCART",
+                        "TIKTOK",
+                        "LAZADA",
+                        "SHOPEE",
+                        "WOOCOMMERCE"
+                    ]
+                }
+            },
+            {
+                "id": "doadfdip",
+                "name": "tenant_group",
+                "type": "relation",
+                "system": false,
+                "required": true,
+                "unique": false,
+                "options": {
+                    "maxSelect": 1,
+                    "collectionId": "owCxmJfWMWb3hDk",
+                    "cascadeDelete": false
+                }
+            },
+            {
+                "id": "v9lmgzhu",
+                "name": "enable",
+                "type": "bool",
+                "system": false,
+                "required": false,
+                "unique": false,
+                "options": {}
+            }
+        ]
+    },
+    {
+        "id": "YGfgyBfqH6PEYoI",
+        "name": "tenant_oauth2",
+        "system": false,
+        "listRule": null,
+        "viewRule": null,
+        "createRule": null,
+        "updateRule": null,
+        "deleteRule": null,
+        "schema": [
+            {
+                "id": "fzf30f3t",
+                "name": "tenant",
+                "type": "relation",
+                "system": false,
+                "required": false,
+                "unique": false,
+                "options": {
+                    "maxSelect": 1,
+                    "collectionId": "I40zuQXUFwunlfd",
+                    "cascadeDelete": false
+                }
+            },
+            {
+                "id": "feicbvn1",
+                "name": "access_token",
+                "type": "text",
+                "system": false,
+                "required": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "id": "lepenmcn",
+                "name": "refresh_token",
+                "type": "text",
+                "system": false,
+                "required": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "id": "nwtegrgm",
+                "name": "expires",
+                "type": "date",
+                "system": false,
+                "required": false,
+                "unique": false,
+                "options": {
+                    "min": "",
+                    "max": ""
+                }
+            }
+        ]
+    },
+    {
+        "id": "G7xdX7GyYCCKnSr",
+        "name": "tenant_inventory",
+        "system": false,
+        "listRule": null,
+        "viewRule": null,
+        "createRule": null,
+        "updateRule": null,
+        "deleteRule": null,
+        "schema": [
+            {
+                "id": "cundlyut",
+                "name": "tenant",
+                "type": "relation",
+                "system": false,
+                "required": false,
+                "unique": false,
+                "options": {
+                    "maxSelect": 1,
+                    "collectionId": "I40zuQXUFwunlfd",
+                    "cascadeDelete": false
+                }
+            },
+            {
+                "id": "frpneek3",
+                "name": "seller_sku",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "unique": false,
+                "options": {
+                    "min": 1,
+                    "max": null,
+                    "pattern": "^\\w+$"
+                }
+            },
+            {
+                "id": "mtlq2k4q",
+                "name": "stocks",
+                "type": "number",
+                "system": false,
+                "required": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null
+                }
+            },
+            {
+                "id": "imbegppo",
+                "name": "tenant_props",
+                "type": "json",
+                "system": false,
+                "required": false,
+                "unique": false,
+                "options": {}
+            }
+        ]
+    },
+    {
+        "id": "owCxmJfWMWb3hDk",
+        "name": "tenant_groups",
+        "system": false,
+        "listRule": null,
+        "viewRule": null,
+        "createRule": null,
+        "updateRule": null,
+        "deleteRule": null,
+        "schema": [
+            {
+                "id": "mb14qgxc",
+                "name": "name",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "unique": false,
+                "options": {
+                    "min": 1,
+                    "max": null,
+                    "pattern": ""
+                }
+            }
+        ]
+    }
+]
