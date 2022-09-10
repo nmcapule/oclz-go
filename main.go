@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/nmcapule/oclz-go/syncer"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
@@ -14,22 +16,23 @@ func daemon(app *pocketbase.PocketBase) {
 		log.Fatal("intantiate syncer: %v", err)
 	}
 
-	// refreshInterval := 24 * time.Hour
-	// refreshAfter := time.Now()
+	refreshInterval := 24 * time.Hour
+	refreshAfter := time.Now()
 	for {
-		item, err := syncer.Tenants["CIRCUIT_ROCKS_LAZADA"].LoadItem("2162")
-		if err != nil {
-			panic(err)
+		if time.Now().After(refreshAfter) {
+			log.Info("collect inventory...")
+			if err := syncer.CollectAllItems(); err != nil {
+				log.Fatalf("collect all live tenant items: %v", err)
+			}
+
+			// item, err := syncer.Tenants["CIRCUIT_ROCKS_LAZADA"].LoadItem("2162")
+			// if err != nil {
+			// 	panic(err)
+			// }
+			// log.Infoln("%+v", item)
+			refreshAfter = refreshAfter.Add(refreshInterval)
+			continue
 		}
-		log.Infoln("%+v", item)
-		// if time.Now().After(refreshAfter) {
-		// 	log.Info("collect inventory...")
-		// 	if err := syncer.CollectAllItems(); err != nil {
-		// 		log.Fatal("collect all live tenant items: %v", err)
-		// 	}
-		// 	refreshAfter = refreshAfter.Add(refreshInterval)
-		// 	continue
-		// }
 
 		// log.Info("sync inventory...")
 		// items, err := syncer.IntentTenant.CollectAllItems()

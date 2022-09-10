@@ -220,8 +220,7 @@ func (s *Syncer) CollectAllItems() error {
 				if err != nil {
 					return fmt.Errorf("save fresh item: %v", err)
 				}
-			}
-			if err != nil {
+			} else if err != nil {
 				return fmt.Errorf("retrieving cached item: %v", err)
 			}
 
