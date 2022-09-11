@@ -20,10 +20,20 @@ func daemon(app *pocketbase.PocketBase) {
 	refreshAfter := time.Now()
 	for {
 		if time.Now().After(refreshAfter) {
-			// log.Info("collect inventory...")
-			// if err := syncer.CollectAllItems(); err != nil {
-			// 	log.Fatalf("collect all live tenant items: %v", err)
+			log.Info("collect inventory...")
+			if err := syncer.CollectAllItems(); err != nil {
+				log.Fatalf("collect all live tenant items: %v", err)
+			}
+
+			// log.Fatalln(syncer.Tenants["CIRCUIT_ROCKS_TIKTOK"].LoadItem("AE007"))
+			// items, err := syncer.Tenants["CIRCUIT_ROCKS_TIKTOK"].CollectAllItems()
+			// if err != nil {
+			// 	log.Fatalln(err)
 			// }
+			// for _, item := range items {
+			// 	log.Printf("%+v", item)
+			// }
+			// log.Fatalln("stop")
 
 			// item, err := syncer.Tenants["CIRCUIT_ROCKS_LAZADA"].LoadItem("2162")
 			// if err != nil {
@@ -46,15 +56,14 @@ func daemon(app *pocketbase.PocketBase) {
 			// if err != nil {
 			// 	panic(err)
 			// }
-			log.Fatalln(syncer.Tenants["CIRCUIT_ROCKS_SHOPEE"].CollectAllItems())
 
 			refreshAfter = refreshAfter.Add(refreshInterval)
 			continue
 		}
 
-		if err := syncer.RefreshCredentials(); err != nil {
-			log.Fatalf("refreshing all tenants credentials: %v", err)
-		}
+		// if err := syncer.RefreshCredentials(); err != nil {
+		// 	log.Fatalf("refreshing all tenants credentials: %v", err)
+		// }
 
 		// log.Info("sync inventory...")
 		// items, err := syncer.IntentTenant.CollectAllItems()

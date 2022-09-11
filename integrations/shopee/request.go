@@ -68,7 +68,7 @@ func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Resul
 	req.URL.RawQuery = query.Encode()
 
 	retry := 3
-	// backoff := 1
+	backoff := 1
 	var gres gjson.Result
 	for retry > 0 {
 		res, err := http.DefaultClient.Do(req)
@@ -86,13 +86,13 @@ func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Resul
 		if gres.Get("error").String() == codeOk {
 			break
 		}
-		// if gres.Get("error").String() == codeCallLimit {
-		// 	log.Warnln("api call exceeded, retrying...")
-		// 	time.Sleep(time.Duration(backoff) * time.Second)
-		// 	retry -= 1
-		// 	backoff *= 2
-		// 	continue
-		// }
+		if gres.Get("error").String() == codeCallLimit {
+			log.Warnln("api call exceeded, retrying...")
+			time.Sleep(time.Duration(backoff) * time.Second)
+			retry -= 1
+			backoff *= 2
+			continue
+		}
 		return nil, fmt.Errorf(
 			"%s: %s, %s",
 			gres.Get("request_id").String(),

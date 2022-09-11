@@ -2,6 +2,12 @@ package tiktok
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
 
 	"github.com/nmcapule/oclz-go/integrations/models"
 	"github.com/nmcapule/oclz-go/oauth2"
@@ -21,13 +27,6 @@ func mustGJSON(v any) gjson.Result {
 	return gjson.ParseBytes(b)
 }
 
-type response struct {
-	Code      int             `json:"code"`
-	Data      json.RawMessage `json:"data"`
-	Message   string          `json:"message"`
-	RequestID string          `json:"request_id"`
-}
-
 // Config is a tiktok config.
 type Config struct {
 	Domain      string `json:"domain"`
@@ -44,10 +43,15 @@ type Client struct {
 	Credentials *oauth2.Credentials
 }
 
-func (c *Client) parseItemsFromSearch(data json.RawMessage) []*models.Item {
+func (c *Client) parseItemsFromSearch(data gjson.Result) []*models.Item {
 	var items []*models.Item
-	gjson.ParseBytes(data).Get("products").ForEach(func(_, product gjson.Result) bool {
+	data.Get("products").ForEach(func(_, product gjson.Result) bool {
 		product.Get("skus").ForEach(func(_, sku gjson.Result) bool {
+			if sku.Get("seller_sku").String() == "" {
+				log.Warningf("Skipping sku_id:%s, empty seller_sku", sku.Get("id").String())
+				return true
+			}
+
 			stocks := 0
 			sku.Get("stock_infos").ForEach(func(_, info gjson.Result) bool {
 				if info.Get("warehouse_id").String() == c.Config.WarehouseID {
@@ -70,31 +74,48 @@ func (c *Client) parseItemsFromSearch(data json.RawMessage) []*models.Item {
 	return items
 }
 
+func (c *Client) defaultWarehouseID() (string, error) {
+	base, err := c.request(&http.Request{
+		Method: http.MethodPost,
+		URL:    c.url("/api/v2/product/get_item_list", url.Values{}),
+	})
+	return base.Get("data.warehouse_list.#(warehouse_type==1).warehouse_id").String(), err
+}
+
 // CollectAllItems collects and returns all items registered in this client.
 func (c *Client) CollectAllItems() ([]*models.Item, error) {
 	if c.Config.WarehouseID == "" {
-		res, err := c.get("/api/logistics/get_warehouse_list", nil)
+		id, err := c.defaultWarehouseID()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("retrieve warehouse: %v", err)
 		}
-		c.Config.WarehouseID = gjson.GetBytes(res.Data, "warehouse_list.#(warehouse_type==1).warehouse_id").String()
+		c.Config.WarehouseID = id
 	}
 
 	var items []*models.Item
-	page := 1
-	pageSize := 50
+	var page int64 = 1
+	const limit = int64(50)
 	for {
-		payload := map[string]interface{}{
-			"page_number": page,
-			"page_size":   pageSize,
-		}
-		res, err := c.post("/api/products/search", payload, nil)
+		base, err := c.request(&http.Request{
+			Method: http.MethodPost,
+			URL: c.url("/api/products/search", url.Values{
+				"page_number": []string{strconv.FormatInt(page, 10)},
+				"page_size":   []string{strconv.FormatInt(limit, 10)},
+			}),
+		})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error response: %v", err)
 		}
-		items = append(items, c.parseItemsFromSearch(res.Data)...)
-		total := gjson.ParseBytes(res.Data).Get("total").Int()
-		if page*pageSize > int(total) {
+
+		items = append(items, c.parseItemsFromSearch(base.Get("data"))...)
+
+		log.WithFields(log.Fields{
+			"items":  len(items),
+			"offset": page * limit,
+			"total":  base.Get("data.total").Int(),
+		}).Infoln("loading items")
+
+		if page*limit >= base.Get("data.total").Int() {
 			break
 		}
 		page += 1
@@ -105,15 +126,34 @@ func (c *Client) CollectAllItems() ([]*models.Item, error) {
 
 // LoadItem returns item info for a single SKU.
 func (c *Client) LoadItem(sku string) (*models.Item, error) {
-	payload := map[string]interface{}{
-		"page_number": 1,
-		"page_size":   50,
-	}
-	res, err := c.post("/api/products/search", payload, nil)
+	body, err := json.Marshal(map[string]interface{}{
+		"seller_sku_list": sku,
+	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("compose payload: %v", err)
 	}
-	items := c.parseItemsFromSearch(res.Data)
+
+	base, err := c.request(&http.Request{
+		Method: http.MethodPost,
+		URL: c.url("/api/products/search", url.Values{
+			"page_number": []string{strconv.FormatInt(1, 10)},
+			"page_size":   []string{strconv.FormatInt(50, 10)},
+		}),
+		Body: io.NopCloser(strings.NewReader(string(body))),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error response: %v", err)
+	}
+	// Collect only items with matching SKU.
+	items := c.parseItemsFromSearch(base.Get("data"))
+	var filtered []*models.Item
+	for i := range items {
+		if items[i].SellerSKU == sku {
+			filtered = append(filtered, items[i])
+		}
+	}
+	items = filtered
+	// Check if multiple or none matched.
 	if len(items) == 0 {
 		return nil, models.ErrNotFound
 	}
@@ -126,20 +166,21 @@ func (c *Client) LoadItem(sku string) (*models.Item, error) {
 // SaveItem saves item info for a single SKU.
 // This only implements updating the product stock.
 func (c *Client) SaveItem(item *models.Item) error {
-	request := map[string]interface{}{
-		"product_id": item.TenantProps.Get("product_id").String(),
-		"skus": []map[string]interface{}{
-			{
-				"id": item.TenantProps.Get("sku_id").String(),
-				"stock_infos": []map[string]interface{}{
-					{
-						"available_stock": item.Stocks,
-						"warehouse_id":    c.Config.WarehouseID,
-					},
-				},
-			},
-		},
-	}
-	_, err := c.put("/api/products/stocks", request, nil)
-	return err
+	// request := map[string]interface{}{
+	// 	"product_id": item.TenantProps.Get("product_id").String(),
+	// 	"skus": []map[string]interface{}{
+	// 		{
+	// 			"id": item.TenantProps.Get("sku_id").String(),
+	// 			"stock_infos": []map[string]interface{}{
+	// 				{
+	// 					"available_stock": item.Stocks,
+	// 					"warehouse_id":    c.Config.WarehouseID,
+	// 				},
+	// 			},
+	// 		},
+	// 	},
+	// }
+	// _, err := c.put("/api/products/stocks", request, nil)
+	// return err
+	return nil
 }
