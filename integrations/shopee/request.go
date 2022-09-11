@@ -22,7 +22,16 @@ const (
 	codeCallLimit = "TODO(ncapule): Find out the code for this"
 )
 
-type RequestOptions struct {
+type requestConfig struct {
+	stripAccessToken bool
+	stripShopID      bool
+}
+
+type requestOption func(cfg *requestConfig)
+
+func tokenRetrievalMode(cfg *requestConfig) {
+	cfg.stripAccessToken = false
+	cfg.stripShopID = false
 }
 
 func (c *Client) url(endpoint string, query url.Values) *url.URL {
@@ -36,7 +45,11 @@ func (c *Client) url(endpoint string, query url.Values) *url.URL {
 	return u
 }
 
-func (c *Client) request(req *http.Request) (*gjson.Result, error) {
+func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Result, error) {
+	var config requestConfig
+	for _, opt := range opts {
+		opt(&config)
+	}
 	timestamp := time.Now().Unix()
 
 	// Harvest endpoint and query from request.
@@ -46,6 +59,12 @@ func (c *Client) request(req *http.Request) (*gjson.Result, error) {
 	query.Set("partner_id", strconv.FormatInt(c.Config.PartnerID, 10))
 	query.Set("timestamp", strconv.FormatInt(timestamp, 10))
 	query.Set("sign", signature(c.Config, endpoint, timestamp))
+	if !config.stripAccessToken {
+		query.Set("access_token", c.Credentials.AccessToken)
+	}
+	if !config.stripShopID {
+		query.Set("shop_id", strconv.FormatInt(c.Config.ShopID, 10))
+	}
 	req.URL.RawQuery = query.Encode()
 
 	retry := 3
@@ -61,6 +80,9 @@ func (c *Client) request(req *http.Request) (*gjson.Result, error) {
 			return nil, fmt.Errorf("read body: %v", err)
 		}
 		gres = gjson.ParseBytes(b)
+		if gres.Get("warning").String() != codeOk {
+			log.Warningf("Shopee request warning: %s", gres.Get("warning").String())
+		}
 		if gres.Get("error").String() == codeOk {
 			break
 		}
@@ -71,7 +93,10 @@ func (c *Client) request(req *http.Request) (*gjson.Result, error) {
 		// 	backoff *= 2
 		// 	continue
 		// }
-		return nil, fmt.Errorf("%s, %s", gres.Get("error").String(), gres.Get("message"))
+		return nil, fmt.Errorf(
+			"%s: %s, %s",
+			gres.Get("request_id").String(),
+			gres.Get("error").String(), gres.Get("message"))
 	}
 	return &gres, nil
 }

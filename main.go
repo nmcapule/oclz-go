@@ -46,6 +46,7 @@ func daemon(app *pocketbase.PocketBase) {
 			// if err != nil {
 			// 	panic(err)
 			// }
+			log.Fatalln(syncer.Tenants["CIRCUIT_ROCKS_SHOPEE"].CollectAllItems())
 
 			refreshAfter = refreshAfter.Add(refreshInterval)
 			continue

@@ -45,7 +45,7 @@ func (c *Client) GenerateCredentials(greq gjson.Result) (*oauth2.Credentials, er
 		Method: http.MethodPost,
 		URL:    c.url("/api/v2/auth/token/get", nil),
 		Body:   io.NopCloser(strings.NewReader(string(body))),
-	})
+	}, tokenRetrievalMode)
 	if err != nil {
 		return nil, fmt.Errorf("error response: %v", err)
 	}
@@ -74,7 +74,7 @@ func (c *Client) RefreshCredentials() (*oauth2.Credentials, error) {
 		Method: http.MethodPost,
 		URL:    c.url("/api/v2/auth/access_token/get", nil),
 		Body:   io.NopCloser(strings.NewReader(string(body))),
-	})
+	}, tokenRetrievalMode)
 	if err != nil {
 		return nil, fmt.Errorf("error response: %v", err)
 	}
