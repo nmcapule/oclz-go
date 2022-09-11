@@ -31,7 +31,7 @@ func daemon(app *pocketbase.PocketBase) {
 			// }
 			// log.Infoln("%+v", item)
 
-			log.Fatalln(syncer.Tenants["CIRCUIT_ROCKS_SHOPEE"].CredentialsManager().GenerateAuthorizationURL())
+			// log.Fatalln(syncer.Tenants["CIRCUIT_ROCKS_SHOPEE"].CredentialsManager().GenerateAuthorizationURL())
 
 			// code := "7265774441464b68764164494f666978"
 			// shopID := "20469516"
@@ -49,6 +49,10 @@ func daemon(app *pocketbase.PocketBase) {
 
 			refreshAfter = refreshAfter.Add(refreshInterval)
 			continue
+		}
+
+		if err := syncer.RefreshCredentials(); err != nil {
+			log.Fatalf("refreshing all tenants credentials: %v", err)
 		}
 
 		// log.Info("sync inventory...")

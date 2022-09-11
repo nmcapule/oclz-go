@@ -3,6 +3,7 @@ package syncer
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/nmcapule/oclz-go/integrations/intent"
 	"github.com/nmcapule/oclz-go/integrations/lazada"
@@ -154,6 +155,37 @@ func (s *Syncer) register(tenantName string) error {
 	s.Tenants[tenantName] = tenant
 	if tenant.Tenant().Vendor == intent.Vendor {
 		s.IntentTenant = tenant
+	}
+	return nil
+}
+
+func (s *Syncer) RefreshCredentials() error {
+	const expiryThreshold = time.Hour
+
+	now := time.Now()
+	oauth2Service := &oauth2.Service{Dao: s.Dao}
+	for _, tenant := range s.NonIntentTenants() {
+		cm := tenant.CredentialsManager()
+		if cm == nil {
+			log.Warningf("Skip credentials refresh for %s, no credentials manager", tenant.Tenant().Name)
+			continue
+		}
+
+		// Only refresh credentials if credentials is about to expire.
+		if cm.CredentialsExpiry().Sub(now) >= expiryThreshold {
+			log.Infof("Skip credentials refresh for %s, not yet near expiry", tenant.Tenant().Name)
+			continue
+		}
+
+		log.Infof("Refreshing credentials for %s", tenant.Tenant().Name)
+		credentials, err := cm.RefreshCredentials()
+		if err != nil {
+			return fmt.Errorf("refreshing credentials for %s: %v", tenant.Tenant().Name, err)
+		}
+		err = oauth2Service.Save(credentials)
+		if err != nil {
+			return fmt.Errorf("save credentials for %s: %v", tenant.Tenant().Name, err)
+		}
 	}
 	return nil
 }

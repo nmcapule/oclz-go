@@ -85,3 +85,7 @@ func (c *Client) RefreshCredentials() (*oauth2.Credentials, error) {
 
 	return c.Credentials, nil
 }
+
+func (c *Client) CredentialsExpiry() time.Time {
+	return c.Credentials.Expires
+}

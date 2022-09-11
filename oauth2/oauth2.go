@@ -41,9 +41,13 @@ func (s *Service) Load(tenant string) (*Credentials, error) {
 		Tenant:       tenant,
 		AccessToken:  record.GetStringDataValue("access_token"),
 		RefreshToken: record.GetStringDataValue("refresh_token"),
-		Expires:      record.GetTimeDataValue("expires"),
-		Created:      record.GetTimeDataValue("created"),
-		Updated:      record.GetTimeDataValue("updated"),
+		// Expires:      record.GetTimeDataValue("expires"),
+		// Created:      record.GetTimeDataValue("created"),
+		// Updated:      record.GetTimeDataValue("updated"),
+		// TODO(nmcapule): Above doesn't work, so we do a workaround.
+		Expires: record.GetDateTimeDataValue("expires").Time(),
+		Created: record.GetDateTimeDataValue("created").Time(),
+		Updated: record.GetDateTimeDataValue("updated").Time(),
 	}, nil
 }
 
