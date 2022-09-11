@@ -30,8 +30,8 @@ type requestConfig struct {
 type requestOption func(cfg *requestConfig)
 
 func tokenRetrievalMode(cfg *requestConfig) {
-	cfg.stripAccessToken = false
-	cfg.stripShopID = false
+	cfg.stripAccessToken = true
+	cfg.stripShopID = true
 }
 
 func (c *Client) url(endpoint string, query url.Values) *url.URL {
