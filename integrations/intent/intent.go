@@ -2,6 +2,7 @@ package intent
 
 import (
 	"github.com/nmcapule/oclz-go/integrations/models"
+	"github.com/nmcapule/oclz-go/oauth2"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/daos"
 )
@@ -63,4 +64,8 @@ func (c *Client) SaveItem(item *models.Item) error {
 		return err
 	}
 	return c.Dao.SaveRecord(item.ToRecord(collection))
+}
+
+func (c *Client) CredentialsManager() oauth2.CredentialsManager {
+	return nil
 }

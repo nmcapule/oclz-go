@@ -1,10 +1,18 @@
 package oauth2
 
 import (
+	"errors"
+	"fmt"
 	"time"
 
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/daos"
 	"github.com/pocketbase/pocketbase/models"
+)
+
+var (
+	ErrNoCredentials       = errors.New("no oauth2 credentials found")
+	ErrMultipleCredentials = errors.New("unexpected multiple oauth2 credentials found")
 )
 
 type Credentials struct {
@@ -27,7 +35,7 @@ func (s *Service) Load(tenant string) (*Credentials, error) {
 	}
 	record, err := s.Dao.FindFirstRecordByData(collection, "tenant", tenant)
 	if err != nil {
-		return nil, err
+		return nil, ErrNoCredentials
 	}
 	return &Credentials{
 		Tenant:       tenant,
@@ -44,7 +52,22 @@ func (s *Service) Save(credentials *Credentials) error {
 	if err != nil {
 		return err
 	}
-	record := models.NewRecord(collection)
+	records, err := s.Dao.FindRecordsByExpr(collection, dbx.HashExp{
+		"tenant": credentials.Tenant,
+	})
+	if err != nil {
+		return fmt.Errorf("retrieving existing creds: %v", err)
+	}
+	if len(records) > 1 {
+		return ErrMultipleCredentials
+	}
+
+	var record *models.Record
+	if len(records) == 1 {
+		record = records[0]
+	} else {
+		record = models.NewRecord(collection)
+	}
 	record.SetDataValue("tenant", credentials.Tenant)
 	record.SetDataValue("access_token", credentials.AccessToken)
 	record.SetDataValue("refresh_token", credentials.RefreshToken)

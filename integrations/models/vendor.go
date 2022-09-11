@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 
+	"github.com/nmcapule/oclz-go/oauth2"
 	pbm "github.com/pocketbase/pocketbase/models"
 )
 
@@ -12,6 +13,7 @@ type VendorClient interface {
 	CollectAllItems() ([]*Item, error)
 	LoadItem(sku string) (*Item, error)
 	SaveItem(item *Item) error
+	CredentialsManager() oauth2.CredentialsManager
 }
 
 type BaseTenant struct {

@@ -7,6 +7,7 @@ import (
 	"github.com/nmcapule/oclz-go/integrations/intent"
 	"github.com/nmcapule/oclz-go/integrations/lazada"
 	"github.com/nmcapule/oclz-go/integrations/models"
+	"github.com/nmcapule/oclz-go/integrations/shopee"
 	"github.com/nmcapule/oclz-go/integrations/tiktok"
 	"github.com/nmcapule/oclz-go/oauth2"
 	"github.com/pocketbase/dbx"
@@ -65,6 +66,23 @@ func LoadClient(dao *daos.Dao, tenantName string) (models.VendorClient, error) {
 			return nil, err
 		}
 		return &lazada.Client{
+			BaseTenant:  tenant,
+			Config:      &config,
+			Credentials: credentials,
+		}, nil
+	case shopee.Vendor:
+		var config shopee.Config
+		err := json.Unmarshal(tenant.Config, &config)
+		if err != nil {
+			return nil, err
+		}
+		credentials, err := oauth2Service.Load(tenant.ID)
+		if err == oauth2.ErrNoCredentials {
+			log.Warnf("no credentials found for %s, anyways...", tenant.Name)
+		} else if err != nil {
+			return nil, err
+		}
+		return &shopee.Client{
 			BaseTenant:  tenant,
 			Config:      &config,
 			Credentials: credentials,
