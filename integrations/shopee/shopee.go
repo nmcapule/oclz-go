@@ -19,10 +19,11 @@ const Vendor = "SHOPEE"
 
 // Config is a Lazada config.
 type Config struct {
-	Domain     string `json:"domain"`
-	ShopID     int64  `json:"shop_id"`
-	PartnerID  int64  `json:"partner_id"`
-	PartnerKey string `json:"partner_key"`
+	Domain      string `json:"domain"`
+	ShopID      int64  `json:"shop_id"`
+	PartnerID   int64  `json:"partner_id"`
+	PartnerKey  string `json:"partner_key"`
+	RedirectURI string `json:"redirect_uri"`
 }
 
 // Client is a Lazada client.

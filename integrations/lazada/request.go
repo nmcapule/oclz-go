@@ -18,8 +18,22 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type requestConfig struct {
+	stripAccessToken bool
+}
+
+type requestOption func(cfg *requestConfig)
+
+func tokenRetrievalMode(cfg *requestConfig) {
+	cfg.stripAccessToken = true
+}
+
 func (c *Client) url(endpoint string, query url.Values) *url.URL {
-	u, err := url.Parse(fmt.Sprintf("%s%s?%s", c.Config.Domain, endpoint, query.Encode()))
+	baseURL := fmt.Sprintf("%s%s", c.Config.Domain, endpoint)
+	if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
+		baseURL = endpoint
+	}
+	u, err := url.Parse(fmt.Sprintf("%s?%s", baseURL, query.Encode()))
 	if err != nil {
 		log.WithFields(log.Fields{
 			"domain":   c.Config.Domain,
@@ -29,14 +43,21 @@ func (c *Client) url(endpoint string, query url.Values) *url.URL {
 	return u
 }
 
-func (c *Client) request(req *http.Request) (*gjson.Result, error) {
+func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Result, error) {
+	var config requestConfig
+	for _, opt := range opts {
+		opt(&config)
+	}
+
 	// Harvest endpoint and query from request.
 	baseURL, _ := url.Parse(c.Config.Domain)
 	endpoint := strings.TrimPrefix(req.URL.Path, baseURL.Path)
 	query := req.URL.Query()
 	query.Set("app_key", c.Config.AppKey)
 	query.Set("timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
-	query.Set("access_token", c.Credentials.AccessToken)
+	if !config.stripAccessToken {
+		query.Set("access_token", c.Credentials.AccessToken)
+	}
 	query.Set("sign_method", "sha256")
 	query.Set("sign", signature(c.Config.AppSecret, endpoint, query))
 	req.URL.RawQuery = query.Encode()

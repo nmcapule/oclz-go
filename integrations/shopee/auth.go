@@ -27,7 +27,7 @@ func (c *Client) GenerateAuthorizationURL() string {
 		"partner_id": []string{strconv.FormatInt(c.Config.PartnerID, 10)},
 		"timestamp":  []string{strconv.FormatInt(timestamp, 10)},
 		"sign":       []string{signature(c.Config, endpoint, timestamp)},
-		"redirect":   []string{"https://n8n.nmcapule.dev/webhook/circuit-rocks/shopee"},
+		"redirect":   []string{c.Config.RedirectURI},
 	}).String()
 }
 

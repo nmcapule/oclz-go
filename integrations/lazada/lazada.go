@@ -35,8 +35,7 @@ type Config struct {
 	Domain      string `json:"domain"`
 	AppKey      string `json:"app_key"`
 	AppSecret   string `json:"app_secret"`
-	ShopID      string `json:"shop_id"`
-	WarehouseID string `json:"warehouse_id"`
+	RedirectURI string `json:"redirect_uri"`
 }
 
 // Client is a Lazada client.
