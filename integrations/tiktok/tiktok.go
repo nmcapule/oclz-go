@@ -34,6 +34,7 @@ type Config struct {
 	AppSecret   string `json:"app_secret"`
 	ShopID      string `json:"shop_id"`
 	WarehouseID string `json:"warehouse_id"`
+	RedirectURI string `json:"redirect_uri"`
 }
 
 // Client is a tiktok client.

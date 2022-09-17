@@ -57,12 +57,12 @@ func daemon(app *pocketbase.PocketBase) {
 			// 	panic(err)
 			// }
 
+			if err := syncer.RefreshCredentials(); err != nil {
+				log.Fatalf("refreshing all tenants credentials: %v", err)
+			}
+
 			refreshAfter = refreshAfter.Add(refreshInterval)
 			continue
-		}
-
-		if err := syncer.RefreshCredentials(); err != nil {
-			log.Fatalf("refreshing all tenants credentials: %v", err)
 		}
 
 		// log.Info("sync inventory...")
