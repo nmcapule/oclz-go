@@ -3,6 +3,7 @@ package main
 import (
 	"time"
 
+	"github.com/nmcapule/oclz-go/integrations/opencart"
 	"github.com/nmcapule/oclz-go/syncer"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
@@ -56,6 +57,8 @@ func daemon(app *pocketbase.PocketBase) {
 			// if err != nil {
 			// 	panic(err)
 			// }
+
+			log.Fatalln(syncer.Tenants["CIRCUIT_ROCKS_OPENCART"].(*opencart.Client).CollectAllItems())
 
 			if err := syncer.RefreshCredentials(); err != nil {
 				log.Fatalf("refreshing all tenants credentials: %v", err)

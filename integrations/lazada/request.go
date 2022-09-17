@@ -18,6 +18,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	codeOk        = "0"
+	codeCallLimit = "ApiCallLimit"
+)
+
 type requestConfig struct {
 	stripAccessToken bool
 }

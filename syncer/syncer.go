@@ -8,6 +8,7 @@ import (
 	"github.com/nmcapule/oclz-go/integrations/intent"
 	"github.com/nmcapule/oclz-go/integrations/lazada"
 	"github.com/nmcapule/oclz-go/integrations/models"
+	"github.com/nmcapule/oclz-go/integrations/opencart"
 	"github.com/nmcapule/oclz-go/integrations/shopee"
 	"github.com/nmcapule/oclz-go/integrations/tiktok"
 	"github.com/nmcapule/oclz-go/oauth2"
@@ -40,6 +41,16 @@ func LoadClient(dao *daos.Dao, tenantName string) (models.VendorClient, error) {
 		return &intent.Client{
 			BaseTenant: tenant,
 			Dao:        dao,
+		}, nil
+	case opencart.Vendor:
+		var config opencart.Config
+		err := json.Unmarshal(tenant.Config, &config)
+		if err != nil {
+			return nil, err
+		}
+		return &opencart.Client{
+			BaseTenant: tenant,
+			Config:     &config,
 		}, nil
 	case tiktok.Vendor:
 		var config tiktok.Config

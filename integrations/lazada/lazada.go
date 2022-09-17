@@ -17,11 +17,6 @@ import (
 
 const Vendor = "LAZADA"
 
-const (
-	codeOk        = "0"
-	codeCallLimit = "ApiCallLimit"
-)
-
 func mustGJSON(v any) gjson.Result {
 	b, err := json.Marshal(v)
 	if err != nil {
