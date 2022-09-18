@@ -147,7 +147,7 @@
                 "type": "relation",
                 "system": false,
                 "required": false,
-                "unique": false,
+                "unique": true,
                 "options": {
                     "maxSelect": 1,
                     "collectionId": "I40zuQXUFwunlfd",
@@ -272,6 +272,104 @@
                 "unique": false,
                 "options": {
                     "min": 1,
+                    "max": null,
+                    "pattern": ""
+                }
+            }
+        ]
+    },
+    {
+        "id": "0n78ok9kegfutmp",
+        "name": "webhooks_redirects",
+        "system": false,
+        "listRule": null,
+        "viewRule": null,
+        "createRule": null,
+        "updateRule": "",
+        "deleteRule": null,
+        "schema": [
+            {
+                "id": "q3vngzzx",
+                "name": "name",
+                "type": "text",
+                "system": false,
+                "required": false,
+                "unique": true,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "id": "sertknd8",
+                "name": "query_values",
+                "type": "json",
+                "system": false,
+                "required": false,
+                "unique": false,
+                "options": {}
+            }
+        ]
+    },
+    {
+        "id": "htir9h90tedk1if",
+        "name": "tenant_inventory_delta",
+        "system": false,
+        "listRule": null,
+        "viewRule": null,
+        "createRule": null,
+        "updateRule": null,
+        "deleteRule": null,
+        "schema": [
+            {
+                "id": "klzrkwcb",
+                "name": "tenant_inventory",
+                "type": "relation",
+                "system": false,
+                "required": true,
+                "unique": false,
+                "options": {
+                    "maxSelect": 1,
+                    "collectionId": "G7xdX7GyYCCKnSr",
+                    "cascadeDelete": true
+                }
+            },
+            {
+                "id": "z0ry01h4",
+                "name": "field",
+                "type": "select",
+                "system": false,
+                "required": true,
+                "unique": false,
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "stocks"
+                    ]
+                }
+            },
+            {
+                "id": "cfhdjavp",
+                "name": "nvalue",
+                "type": "number",
+                "system": false,
+                "required": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null
+                }
+            },
+            {
+                "id": "orlv3g7u",
+                "name": "svalue",
+                "type": "text",
+                "system": false,
+                "required": false,
+                "unique": false,
+                "options": {
+                    "min": null,
                     "max": null,
                     "pattern": ""
                 }

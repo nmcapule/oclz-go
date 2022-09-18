@@ -17,9 +17,9 @@ type loopConfig struct {
 
 func launchLoop(fn func(quit chan struct{}), config loopConfig) error {
 	time.Sleep(config.initialWait)
-
-	ticker := time.NewTicker(config.retryWait)
 	quit := make(chan struct{})
+	fn(quit)
+	ticker := time.NewTicker(config.retryWait)
 	for {
 		select {
 		case <-ticker.C:
@@ -41,7 +41,7 @@ func daemon(app *pocketbase.PocketBase) {
 		if err := syncer.CollectAllItems(); err != nil {
 			log.Fatalf("collect all live tenant items: %v", err)
 		}
-	}, loopConfig{initialWait: 24 * time.Hour, retryWait: 24 * time.Hour})
+	}, loopConfig{initialWait: 1 * time.Second, retryWait: 24 * time.Hour})
 	go launchLoop(func(quit chan struct{}) {
 		log.Infoln("refreshing oauth2 credentials...")
 		if err := syncer.RefreshCredentials(); err != nil {
@@ -49,18 +49,19 @@ func daemon(app *pocketbase.PocketBase) {
 		}
 	}, loopConfig{retryWait: 1 * time.Hour})
 
-	log.Info("sync inventory...")
-	items, err := syncer.IntentTenant.CollectAllItems()
-	if err != nil {
-		log.Fatalf("collect all intent items: %v", err)
-	}
-	for _, item := range items {
-		err := syncer.SyncItem(item.SellerSKU)
+	launchLoop(func(quit chan struct{}) {
+		log.Info("sync inventory...")
+		items, err := syncer.IntentTenant.CollectAllItems()
 		if err != nil {
-			log.Fatalf("syncing %q: %v", item.SellerSKU, err)
+			log.Fatalf("collect all intent items: %v", err)
 		}
-		time.Sleep(500 * time.Millisecond)
-	}
+		for _, item := range items {
+			err := syncer.SyncItem(item.SellerSKU)
+			if err != nil {
+				log.Fatalf("syncing %q: %v", item.SellerSKU, err)
+			}
+		}
+	}, loopConfig{retryWait: 5 * time.Second})
 }
 
 func main() {
