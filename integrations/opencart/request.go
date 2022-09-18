@@ -39,24 +39,30 @@ func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Resul
 		opt(&config)
 	}
 
-	form := url.Values{
-		"username": []string{c.Config.Username},
-		"password": []string{c.Config.Password},
-		"redirect": []string{req.URL.String()},
-	}
 	// Override request with one derived from the original.
-	req = &http.Request{
+	login := &http.Request{
 		Method: http.MethodPost,
 		URL:    c.url("common/login", nil),
-		Body:   io.NopCloser(strings.NewReader(form.Encode())),
+		Body: io.NopCloser(strings.NewReader(url.Values{
+			"username": []string{c.Config.Username},
+			"password": []string{c.Config.Password},
+			"redirect": []string{req.URL.String()},
+		}.Encode())),
 		Header: map[string][]string{
 			"Content-Type": {"application/x-www-form-urlencoded"},
 		},
 	}
-	// log.Fatalln(req.URL)
-	// log.Fatalln(string(body))
+	res, err := http.DefaultClient.Do(login)
+	if err != nil {
+		return nil, fmt.Errorf("http request: %v", err)
+	}
 
-	res, err := http.DefaultClient.Do(req)
+	req.Header = make(map[string][]string)
+	cookies := res.Cookies()
+	for i := range cookies {
+		req.AddCookie(cookies[i])
+	}
+	res, err = http.DefaultClient.Do(login)
 	if err != nil {
 		return nil, fmt.Errorf("http request: %v", err)
 	}
@@ -64,7 +70,6 @@ func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Resul
 	if err != nil {
 		return nil, fmt.Errorf("read body: %v", err)
 	}
-	log.Fatalln(string(b))
 	gj := gjson.ParseBytes(b)
 	return &gj, nil
 }

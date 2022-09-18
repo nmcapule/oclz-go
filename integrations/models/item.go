@@ -1,17 +1,11 @@
 package models
 
 import (
-	"errors"
 	"time"
 
-	pbm "github.com/pocketbase/pocketbase/models"
 	"github.com/tidwall/gjson"
-)
 
-var (
-	ErrNotFound      = errors.New("not found")
-	ErrMultipleItems = errors.New("unexpected multiple items retrieved")
-	ErrUnimplemented = errors.New("not yet implemented")
+	pbm "github.com/pocketbase/pocketbase/models"
 )
 
 // Item is an interface for any items for any vendors.
