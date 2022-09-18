@@ -48,7 +48,7 @@ func (c *Client) CollectAllItems() ([]*models.Item, error) {
 				"page_size":   []string{strconv.FormatInt(limit, 10)},
 				"item_status": []string{"NORMAL"},
 			}),
-		}, tokenRetrievalMode)
+		})
 		if err != nil {
 			return nil, fmt.Errorf("error response: %v", err)
 		}
@@ -78,12 +78,14 @@ func (c *Client) CollectAllItems() ([]*models.Item, error) {
 
 // LoadItem returns item info for a single SKU.
 func (c *Client) LoadItem(sku string) (*models.Item, error) {
+	log.Warn("Cannot load %q: LoadItem is unimplemented in %s", sku, c.Name)
 	return nil, nil
 }
 
 // SaveItem saves item info for a single SKU.
 // This only implements updating the product stock.
 func (c *Client) SaveItem(item *models.Item) error {
+	log.Warn("Cannot sync %q: SaveItem is unimplemented in %s", item.SellerSKU, c.Name)
 	return nil
 }
 

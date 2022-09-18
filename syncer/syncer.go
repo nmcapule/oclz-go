@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/nmcapule/oclz-go/integrations/intent"
@@ -84,7 +85,7 @@ func (s *Syncer) RefreshCredentials() error {
 
 	now := time.Now()
 	oauth2Service := &oauth2.Service{Dao: s.Dao}
-	for _, tenant := range s.NonIntentTenants() {
+	for _, tenant := range s.nonIntentTenants() {
 		cm := tenant.CredentialsManager()
 		if cm == nil {
 			log.Warningf("Skip credentials refresh for %s, no credentials manager", tenant.Tenant().Name)
@@ -110,7 +111,7 @@ func (s *Syncer) RefreshCredentials() error {
 	return nil
 }
 
-func (s *Syncer) NonIntentTenants() []models.VendorClient {
+func (s *Syncer) nonIntentTenants() []models.VendorClient {
 	var tenants []models.VendorClient
 	for _, client := range s.Tenants {
 		if client.Tenant().Vendor != intent.Vendor {
@@ -120,7 +121,7 @@ func (s *Syncer) NonIntentTenants() []models.VendorClient {
 	return tenants
 }
 
-func (s *Syncer) TenantInventory(tenantName, sellerSKU string) (*models.Item, error) {
+func (s *Syncer) tenantInventory(tenantName, sellerSKU string) (*models.Item, error) {
 	collection, err := s.Dao.FindCollectionByNameOrId("tenant_inventory")
 	if err != nil {
 		return nil, err
@@ -141,7 +142,7 @@ func (s *Syncer) TenantInventory(tenantName, sellerSKU string) (*models.Item, er
 	return models.ItemFrom(inventory[0]), nil
 }
 
-func (s *Syncer) SaveTenantInventory(tenantName string, item *models.Item) error {
+func (s *Syncer) saveTenantInventory(tenantName string, item *models.Item) error {
 	tenant := s.Tenants[tenantName]
 	item.TenantID = tenant.Tenant().ID
 
@@ -160,7 +161,7 @@ func (s *Syncer) SaveTenantInventory(tenantName string, item *models.Item) error
 func (s *Syncer) CollectAllItems() error {
 	intentItems, err := s.IntentTenant.CollectAllItems()
 	if err != nil {
-		return fmt.Errorf("collect intent items: %v", err)
+		return fmt.Errorf("collect all intent items: %v", err)
 	}
 	intentItemsLookup := make(map[string]struct{})
 	for _, item := range intentItems {
@@ -169,13 +170,13 @@ func (s *Syncer) CollectAllItems() error {
 
 	// Collect all items that are not intent items.
 	var itemsOutsideIntent []*models.Item
-	for _, tenant := range s.NonIntentTenants() {
+	for _, tenant := range s.nonIntentTenants() {
 		items, err := tenant.CollectAllItems()
 		if err != nil {
-			return fmt.Errorf("collect tenant items: %v", err)
+			return fmt.Errorf("collect tenant items for %q: %v", tenant.Tenant().Name, err)
 		}
 		for i, item := range items {
-			_, err := s.TenantInventory(tenant.Tenant().Name, item.SellerSKU)
+			_, err := s.tenantInventory(tenant.Tenant().Name, item.SellerSKU)
 			// If not found, means that this is the first time we detected
 			// the item on this tenant.
 			if err == models.ErrNotFound {
@@ -186,7 +187,7 @@ func (s *Syncer) CollectAllItems() error {
 					return fmt.Errorf("get fresh item: %v", err)
 				}
 				// Save fresh copy to the tenant inventory.
-				err = s.SaveTenantInventory(tenant.Tenant().Name, fresh)
+				err = s.saveTenantInventory(tenant.Tenant().Name, fresh)
 				if err != nil {
 					return fmt.Errorf("save fresh item: %v", err)
 				}
@@ -202,7 +203,7 @@ func (s *Syncer) CollectAllItems() error {
 
 	// Save all new items that are not in the intent into the intent.
 	for _, item := range itemsOutsideIntent {
-		err := s.SaveTenantInventory(s.IntentTenant.Tenant().Name, item)
+		err := s.saveTenantInventory(s.IntentTenant.Tenant().Name, item)
 		if err != nil {
 			return fmt.Errorf("save tenant items: %v", err)
 		}
@@ -216,11 +217,7 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 	tenantItemMap := make(map[string]*models.Item)
 	var totalDelta int
 	for _, tenant := range s.Tenants {
-		item, err := tenant.LoadItem(sellerSKU)
-		if err != nil {
-			return fmt.Errorf("loading live item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
-		}
-		cached, err := s.TenantInventory(tenant.Tenant().Name, sellerSKU)
+		cached, err := s.tenantInventory(tenant.Tenant().Name, sellerSKU)
 		if err == models.ErrNotFound {
 			log.WithFields(log.Fields{
 				"seller_sku": sellerSKU,
@@ -231,11 +228,27 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 		if err != nil {
 			return fmt.Errorf("loading cached item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
 		}
-		totalDelta += item.Stocks - cached.Stocks
+		current, err := tenant.LoadItem(sellerSKU)
+		if err != nil {
+			return fmt.Errorf("loading live item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
+		}
+		totalDelta += current.Stocks - cached.Stocks
 
-		item.ID = cached.ID
-		item.Created = cached.Created
-		tenantItemMap[tenant.Tenant().Name] = item
+		if totalDelta != 0 {
+			err := s.saveInventoryDelta(&inventoryDelta{
+				Inventory: cached.ID,
+				Field:     "stocks",
+				NValue:    float64(current.Stocks),
+				SValue:    strconv.Itoa(current.Stocks),
+			})
+			if err != nil {
+				return fmt.Errorf("saving inventory delta for %s (%s): %v", sellerSKU, cached.ID, err)
+			}
+		}
+
+		current.ID = cached.ID
+		current.Created = cached.Created
+		tenantItemMap[tenant.Tenant().Name] = current
 	}
 
 	targetStocks := tenantItemMap[s.IntentTenant.Tenant().Name].Stocks
@@ -261,7 +274,7 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 		if err := tenant.SaveItem(item); err != nil {
 			return fmt.Errorf("saving live item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
 		}
-		if err := s.SaveTenantInventory(tenant.Tenant().Name, item); err != nil {
+		if err := s.saveTenantInventory(tenant.Tenant().Name, item); err != nil {
 			return fmt.Errorf("saving cached item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
 		}
 	}

@@ -26,21 +26,22 @@ type Client struct {
 
 // CollectAllItems collects and returns all items registered in this client.
 func (c *Client) CollectAllItems() ([]*models.Item, error) {
-	base, err := c.request(&http.Request{
+	_, err := c.request(&http.Request{
 		Method: http.MethodGet,
 		URL:    c.url("/module/store_sync/listlocalproducts", nil),
 	})
-	log.Fatalln("hello", base)
 	return nil, err
 }
 
 // LoadItem returns item info for a single SKU.
 func (c *Client) LoadItem(sku string) (*models.Item, error) {
+	log.Warn("Cannot load %q: LoadItem is unimplemented in %s", sku, c.Name)
 	return nil, nil
 }
 
 // SaveItem saves item info for a single SKU.
 // This only implements updating the product stock.
 func (c *Client) SaveItem(item *models.Item) error {
+	log.Warn("Cannot sync %q: SaveItem is unimplemented in %s", item.SellerSKU, c.Name)
 	return nil
 }

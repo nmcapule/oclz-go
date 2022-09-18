@@ -101,6 +101,7 @@ func (c *Client) LoadItem(sku string) (*models.Item, error) {
 // SaveItem saves item info for a single SKU.
 // This only implements updating the product stock.
 func (c *Client) SaveItem(item *models.Item) error {
+	log.Warn("Cannot sync %q: SaveItem is unimplemented in %s", item.SellerSKU, c.Name)
 	return nil
 }
 

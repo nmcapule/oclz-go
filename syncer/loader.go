@@ -12,6 +12,8 @@ import (
 	"github.com/nmcapule/oclz-go/integrations/tiktok"
 	"github.com/nmcapule/oclz-go/oauth2"
 	"github.com/pocketbase/pocketbase/daos"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // LoadClient loads a client depending on the config vendor.
