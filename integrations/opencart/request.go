@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"strings"
 
 	"github.com/tidwall/gjson"
+	"golang.org/x/net/publicsuffix"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -57,27 +59,14 @@ func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Resul
 		},
 	}
 
-	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-	res, err := client.Do(login)
+	jar, err := cookiejar.New(&cookiejar.Options{
+		PublicSuffixList: publicsuffix.List,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("http request: %v", err)
+		return nil, fmt.Errorf("creating cookie jar: %v", err)
 	}
-
-	// Manually do redirects, since Go doesn't do it for us. It should, but
-	// it's not doing it right now :/
-	req = &http.Request{
-		URL:    c.url(res.Header.Get("location"), nil),
-		Header: make(map[string][]string),
-	}
-	cookies := res.Cookies()
-	for i := range cookies {
-		req.AddCookie(cookies[i])
-	}
-	res, err = http.DefaultClient.Do(req)
+	client := &http.Client{Jar: jar}
+	res, err := client.Do(login)
 	if err != nil {
 		return nil, fmt.Errorf("http request: %v", err)
 	}
@@ -86,6 +75,5 @@ func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Resul
 		return nil, fmt.Errorf("read body: %v", err)
 	}
 	gj := gjson.ParseBytes(b)
-	log.Fatalln("body:", gj)
 	return &gj, nil
 }
