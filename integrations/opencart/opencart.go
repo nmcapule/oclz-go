@@ -60,10 +60,20 @@ func (c *Client) CollectAllItems() ([]*models.Item, error) {
 		items = append(items, &models.Item{
 			SellerSKU: item.Get("model").String(),
 			Stocks:    int(item.Get("quantity").Int()),
+			TenantProps: mustGJSON(map[string]interface{}{
+				"product_name": item.Get("product_name").String(),
+				"price":        item.Get("price").Float(),
+				"status":       item.Get("status").String(),
+			}),
 		})
 		log.Infoln(&models.Item{
 			SellerSKU: item.Get("model").String(),
 			Stocks:    int(item.Get("quantity").Int()),
+			TenantProps: mustGJSON(map[string]interface{}{
+				"product_name": item.Get("product_name").String(),
+				"price":        item.Get("price").Float(),
+				"status":       item.Get("status").String(),
+			}),
 		})
 		return true
 	})
@@ -82,4 +92,12 @@ func (c *Client) LoadItem(sku string) (*models.Item, error) {
 func (c *Client) SaveItem(item *models.Item) error {
 	log.Warn("Cannot sync %q: SaveItem is unimplemented in %s", item.SellerSKU, c.Name)
 	return nil
+}
+
+func mustGJSON(v any) gjson.Result {
+	b, err := json.Marshal(v)
+	if err != nil {
+		log.Fatalf("serializing JSON: %v", err)
+	}
+	return gjson.ParseBytes(b)
 }
