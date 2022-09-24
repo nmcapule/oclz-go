@@ -43,26 +43,41 @@ func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Resul
 	login := &http.Request{
 		Method: http.MethodPost,
 		URL:    c.url("common/login", nil),
-		Body: io.NopCloser(strings.NewReader(url.Values{
-			"username": []string{c.Config.Username},
-			"password": []string{c.Config.Password},
-			"redirect": []string{req.URL.String()},
-		}.Encode())),
+		Body: io.NopCloser(strings.NewReader(
+			url.Values{
+				"username": []string{c.Config.Username},
+				"password": []string{c.Config.Password},
+				"redirect": []string{req.URL.String()},
+			}.Encode(),
+		)),
 		Header: map[string][]string{
+			// "Content-Type": {"multipart/form-data"},
 			"Content-Type": {"application/x-www-form-urlencoded"},
+			"Accept":       {"*/*"},
 		},
 	}
-	res, err := http.DefaultClient.Do(login)
+
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	res, err := client.Do(login)
 	if err != nil {
 		return nil, fmt.Errorf("http request: %v", err)
 	}
 
-	req.Header = make(map[string][]string)
+	// Manually do redirects, since Go doesn't do it for us. It should, but
+	// it's not doing it right now :/
+	req = &http.Request{
+		URL:    c.url(res.Header.Get("location"), nil),
+		Header: make(map[string][]string),
+	}
 	cookies := res.Cookies()
 	for i := range cookies {
 		req.AddCookie(cookies[i])
 	}
-	res, err = http.DefaultClient.Do(login)
+	res, err = http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("http request: %v", err)
 	}
@@ -71,5 +86,6 @@ func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Resul
 		return nil, fmt.Errorf("read body: %v", err)
 	}
 	gj := gjson.ParseBytes(b)
+	log.Fatalln("body:", gj)
 	return &gj, nil
 }

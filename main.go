@@ -49,19 +49,19 @@ func daemon(app *pocketbase.PocketBase) {
 		}
 	}, loopConfig{retryWait: 1 * time.Hour})
 
-	launchLoop(func(quit chan struct{}) {
-		log.Info("sync inventory...")
-		items, err := syncer.IntentTenant.CollectAllItems()
-		if err != nil {
-			log.Fatalf("collect all intent items: %v", err)
-		}
-		for _, item := range items {
-			err := syncer.SyncItem(item.SellerSKU)
-			if err != nil {
-				log.Fatalf("syncing %q: %v", item.SellerSKU, err)
-			}
-		}
-	}, loopConfig{retryWait: 5 * time.Second})
+	// launchLoop(func(quit chan struct{}) {
+	// 	log.Info("sync inventory...")
+	// 	items, err := syncer.IntentTenant.CollectAllItems()
+	// 	if err != nil {
+	// 		log.Fatalf("collect all intent items: %v", err)
+	// 	}
+	// 	for _, item := range items {
+	// 		err := syncer.SyncItem(item.SellerSKU)
+	// 		if err != nil {
+	// 			log.Fatalf("syncing %q: %v", item.SellerSKU, err)
+	// 		}
+	// 	}
+	// }, loopConfig{retryWait: 5 * time.Second})
 }
 
 func main() {
