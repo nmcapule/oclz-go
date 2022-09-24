@@ -15,9 +15,16 @@ import (
 )
 
 type requestConfig struct {
+	parser func(input string) string
 }
 
 type requestOption func(cfg *requestConfig)
+
+func responseParser(parser func(input string) string) func(cfg *requestConfig) {
+	return func(cfg *requestConfig) {
+		cfg.parser = parser
+	}
+}
 
 func (c *Client) url(endpoint string, query url.Values) *url.URL {
 	endpoint = strings.TrimPrefix(endpoint, "/")
@@ -53,7 +60,6 @@ func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Resul
 			}.Encode(),
 		)),
 		Header: map[string][]string{
-			// "Content-Type": {"multipart/form-data"},
 			"Content-Type": {"application/x-www-form-urlencoded"},
 			"Accept":       {"*/*"},
 		},
@@ -73,6 +79,9 @@ func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Resul
 	b, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, fmt.Errorf("read body: %v", err)
+	}
+	if config.parser != nil {
+		b = []byte(config.parser(string(b)))
 	}
 	gj := gjson.ParseBytes(b)
 	return &gj, nil
