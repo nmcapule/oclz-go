@@ -41,7 +41,7 @@ func daemon(app *pocketbase.PocketBase) {
 		if err := syncer.CollectAllItems(); err != nil {
 			log.Fatalf("collect all live tenant items: %v", err)
 		}
-	}, loopConfig{initialWait: 1 * time.Second, retryWait: 24 * time.Hour})
+	}, loopConfig{initialWait: 5 * time.Second, retryWait: 24 * time.Hour})
 	go launchLoop(func(quit chan struct{}) {
 		log.Infoln("refreshing oauth2 credentials...")
 		if err := syncer.RefreshCredentials(); err != nil {

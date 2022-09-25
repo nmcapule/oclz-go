@@ -31,13 +31,13 @@ type Client struct {
 
 // CollectAllItems collects and returns all items registered in this client.
 func (c *Client) CollectAllItems() ([]*models.Item, error) {
-	return c.loadItems(nil)
+	return c.loadPaginatedItems(nil)
 }
 
 // LoadItem returns item info for a single SKU.
 func (c *Client) LoadItem(sku string) (*models.Item, error) {
-	items, err := c.loadItems(url.Values{
-		"model": []string{sku},
+	items, err := c.loadPaginatedItems(url.Values{
+		"filter_model": []string{sku},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("retrieving %q: %v", sku, err)
@@ -62,7 +62,7 @@ func (c *Client) LoadItem(sku string) (*models.Item, error) {
 	return items[0], nil
 }
 
-func (c *Client) loadItems(query url.Values) ([]*models.Item, error) {
+func (c *Client) loadPaginatedItems(query url.Values) ([]*models.Item, error) {
 	if query == nil {
 		query = make(url.Values)
 	}
