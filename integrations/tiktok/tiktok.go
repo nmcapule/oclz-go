@@ -11,6 +11,7 @@ import (
 
 	"github.com/nmcapule/oclz-go/integrations/models"
 	"github.com/nmcapule/oclz-go/oauth2"
+	"github.com/nmcapule/oclz-go/utils"
 	"github.com/tidwall/gjson"
 
 	log "github.com/sirupsen/logrus"
@@ -18,14 +19,6 @@ import (
 
 // Vendor is key name for tiktok clients.
 const Vendor = "TIKTOK"
-
-func mustGJSON(v any) gjson.Result {
-	b, err := json.Marshal(v)
-	if err != nil {
-		log.Fatalf("serializing JSON: %v", err)
-	}
-	return gjson.ParseBytes(b)
-}
 
 // Config is a tiktok config.
 type Config struct {
@@ -63,7 +56,7 @@ func (c *Client) parseItemsFromSearch(data gjson.Result) []*models.Item {
 			items = append(items, &models.Item{
 				SellerSKU: sku.Get("seller_sku").String(),
 				Stocks:    stocks,
-				TenantProps: mustGJSON(map[string]interface{}{
+				TenantProps: utils.GJSONFrom(map[string]interface{}{
 					"product_id": product.Get("id").String(),
 					"sku_id":     sku.Get("id").String(),
 				}),

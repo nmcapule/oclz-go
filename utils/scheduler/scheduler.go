@@ -7,7 +7,7 @@ type LoopConfig struct {
 	RetryWait   time.Duration
 }
 
-func Launch(fn func(quit chan struct{}), config LoopConfig) error {
+func Loop(fn func(quit chan struct{}), config LoopConfig) error {
 	time.Sleep(config.InitialWait)
 	quit := make(chan struct{})
 	fn(quit)

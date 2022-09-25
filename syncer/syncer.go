@@ -2,7 +2,6 @@ package syncer
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/nmcapule/oclz-go/integrations/intent"
@@ -156,74 +155,4 @@ func (s *Syncer) saveTenantInventory(tenantName string, item *models.Item) error
 	}
 	record := item.ToRecord(collection)
 	return s.Dao.SaveRecord(record)
-}
-
-// SyncItem tries to sync a single seller sku across all tenants.
-func (s *Syncer) SyncItem(sellerSKU string) error {
-	tenantItemMap := make(map[string]*models.Item)
-	var totalDelta int
-	for _, tenant := range s.Tenants {
-		cached, err := s.tenantInventory(tenant.Tenant().Name, sellerSKU)
-		if err == models.ErrNotFound {
-			log.WithFields(log.Fields{
-				"seller_sku": sellerSKU,
-				"tenant":     tenant.Tenant().Name,
-			}).Infoln("Item not found")
-			continue
-		}
-		if err != nil {
-			return fmt.Errorf("loading cached item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
-		}
-		current, err := tenant.LoadItem(sellerSKU)
-		if err != nil {
-			return fmt.Errorf("loading live item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
-		}
-		totalDelta += current.Stocks - cached.Stocks
-
-		if totalDelta != 0 {
-			err := s.saveInventoryDelta(&inventoryDelta{
-				Inventory: cached.ID,
-				Field:     "stocks",
-				NValue:    float64(current.Stocks),
-				SValue:    strconv.Itoa(current.Stocks),
-			})
-			if err != nil {
-				return fmt.Errorf("saving inventory delta for %s (%s): %v", sellerSKU, cached.ID, err)
-			}
-		}
-
-		current.ID = cached.ID
-		current.Created = cached.Created
-		tenantItemMap[tenant.Tenant().Name] = current
-	}
-
-	targetStocks := tenantItemMap[s.IntentTenant.Tenant().Name].Stocks
-	targetStocks += totalDelta
-	if targetStocks < 0 {
-		log.Printf("warning: %s has negative stocks, setting to 0", sellerSKU)
-	}
-
-	for _, tenant := range s.Tenants {
-		item, ok := tenantItemMap[tenant.Tenant().Name]
-		if !ok {
-			log.WithFields(log.Fields{
-				"seller_sku": sellerSKU,
-				"tenant":     tenant.Tenant().Name,
-			}).Infoln("Skip item sync, does not exist in tenant")
-			continue
-		}
-		// Skip update if has the same stock as the intent tenant.
-		if item.Stocks == targetStocks {
-			continue
-		}
-		item.Stocks = targetStocks
-		if err := tenant.SaveItem(item); err != nil {
-			return fmt.Errorf("saving live item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
-		}
-		if err := s.saveTenantInventory(tenant.Tenant().Name, item); err != nil {
-			return fmt.Errorf("saving cached item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
-		}
-	}
-
-	return nil
 }

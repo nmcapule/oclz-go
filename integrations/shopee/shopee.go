@@ -2,7 +2,6 @@
 package shopee
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,7 +9,7 @@ import (
 
 	"github.com/nmcapule/oclz-go/integrations/models"
 	"github.com/nmcapule/oclz-go/oauth2"
-	"github.com/tidwall/gjson"
+	"github.com/nmcapule/oclz-go/utils"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -55,7 +54,7 @@ func (c *Client) CollectAllItems() ([]*models.Item, error) {
 
 		for _, product := range base.Get("response.item").Array() {
 			items = append(items, &models.Item{
-				TenantProps: mustGJSON(map[string]interface{}{
+				TenantProps: utils.GJSONFrom(map[string]interface{}{
 					"item_id": product.Get("item_id").String(),
 				}),
 			})
@@ -87,12 +86,4 @@ func (c *Client) LoadItem(sku string) (*models.Item, error) {
 func (c *Client) SaveItem(item *models.Item) error {
 	log.Warn("Cannot sync %q: SaveItem is unimplemented in %s", item.SellerSKU, c.Name)
 	return nil
-}
-
-func mustGJSON(v any) gjson.Result {
-	b, err := json.Marshal(v)
-	if err != nil {
-		log.Fatalf("serializing JSON: %v", err)
-	}
-	return gjson.ParseBytes(b)
 }

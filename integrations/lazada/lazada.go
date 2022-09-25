@@ -2,7 +2,6 @@
 package lazada
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,20 +9,13 @@ import (
 
 	"github.com/nmcapule/oclz-go/integrations/models"
 	"github.com/nmcapule/oclz-go/oauth2"
+	"github.com/nmcapule/oclz-go/utils"
 	"github.com/tidwall/gjson"
 
 	log "github.com/sirupsen/logrus"
 )
 
 const Vendor = "LAZADA"
-
-func mustGJSON(v any) gjson.Result {
-	b, err := json.Marshal(v)
-	if err != nil {
-		log.Fatalf("serializing JSON: %v", err)
-	}
-	return gjson.ParseBytes(b)
-}
 
 // Config is a Lazada config.
 type Config struct {
@@ -111,7 +103,7 @@ func parseItemsFromProduct(product gjson.Result) []*models.Item {
 		items = append(items, &models.Item{
 			SellerSKU: sku.Get("SellerSku").String(),
 			Stocks:    int(sku.Get("quantity").Int()),
-			TenantProps: mustGJSON(map[string]interface{}{
+			TenantProps: utils.GJSONFrom(map[string]interface{}{
 				"item_id": product.Get("item_id").String(),
 			}),
 		})

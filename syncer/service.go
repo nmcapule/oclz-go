@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/nmcapule/oclz-go/integrations/models"
-	"github.com/nmcapule/oclz-go/scheduler"
+	"github.com/nmcapule/oclz-go/utils/scheduler"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -39,14 +39,14 @@ func (s *Syncer) Start() error {
 	// 	}
 	// }, scheduler.LoopConfig{InitialWait: 5 * time.Second, RetryWait: 24 * time.Hour})
 
-	go scheduler.Launch(func(quit chan struct{}) {
+	go scheduler.Loop(func(quit chan struct{}) {
 		log.Infoln("refreshing oauth2 credentials...")
 		if err := s.RefreshCredentials(); err != nil {
 			log.Fatalf("refreshing all tenants credentials: %v", err)
 		}
 	}, scheduler.LoopConfig{RetryWait: 30 * time.Minute})
 
-	return scheduler.Launch(func(quit chan struct{}) {
+	return scheduler.Loop(func(quit chan struct{}) {
 		log.Info("sync inventory...")
 		items, err := s.IntentTenant.CollectAllItems()
 		if err != nil {
