@@ -17,7 +17,7 @@ import (
 )
 
 // LoadClient loads a client depending on the config vendor.
-func LoadClient(dao *daos.Dao, tenantName string) (models.VendorClient, error) {
+func LoadClient(dao *daos.Dao, tenantName string) (models.IntegrationClient, error) {
 	collection, err := dao.FindCollectionByNameOrId("tenants")
 	if err != nil {
 		return nil, err

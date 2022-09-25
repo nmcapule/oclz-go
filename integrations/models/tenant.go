@@ -4,16 +4,23 @@ import (
 	"encoding/json"
 
 	"github.com/nmcapule/oclz-go/oauth2"
+
 	pbm "github.com/pocketbase/pocketbase/models"
 )
 
-// VendorClient is an interface for any vendor clients.
-type VendorClient interface {
+// BackgroundService is a background running service.
+type BackgroundService interface {
+	Start() error
+}
+
+// IntegrationClient is an interface for any vendor clients.
+type IntegrationClient interface {
 	Tenant() *BaseTenant
 	CollectAllItems() ([]*Item, error)
 	LoadItem(sku string) (*Item, error)
 	SaveItem(item *Item) error
 	CredentialsManager() oauth2.CredentialsManager
+	BackgroundService() BackgroundService
 }
 
 type BaseTenant struct {

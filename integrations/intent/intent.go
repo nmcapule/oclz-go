@@ -69,3 +69,7 @@ func (c *Client) SaveItem(item *models.Item) error {
 func (c *Client) CredentialsManager() oauth2.CredentialsManager {
 	return nil
 }
+
+func (c *Client) BackgroundService() models.BackgroundService {
+	return nil
+}

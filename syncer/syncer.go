@@ -18,8 +18,8 @@ import (
 type Syncer struct {
 	TenantGroupName string
 	Dao             *daos.Dao
-	Tenants         map[string]models.VendorClient
-	IntentTenant    models.VendorClient
+	Tenants         map[string]models.IntegrationClient
+	IntentTenant    models.IntegrationClient
 }
 
 // NewSyncer creates a new syncer instance.
@@ -71,7 +71,7 @@ func (s *Syncer) register(tenantName string) error {
 		return err
 	}
 	if s.Tenants == nil {
-		s.Tenants = make(map[string]models.VendorClient)
+		s.Tenants = make(map[string]models.IntegrationClient)
 	}
 	s.Tenants[tenantName] = tenant
 	if tenant.Tenant().Vendor == intent.Vendor {
@@ -111,8 +111,8 @@ func (s *Syncer) RefreshCredentials() error {
 	return nil
 }
 
-func (s *Syncer) nonIntentTenants() []models.VendorClient {
-	var tenants []models.VendorClient
+func (s *Syncer) nonIntentTenants() []models.IntegrationClient {
+	var tenants []models.IntegrationClient
 	for _, client := range s.Tenants {
 		if client.Tenant().Vendor != intent.Vendor {
 			tenants = append(tenants, client)
@@ -156,60 +156,6 @@ func (s *Syncer) saveTenantInventory(tenantName string, item *models.Item) error
 	}
 	record := item.ToRecord(collection)
 	return s.Dao.SaveRecord(record)
-}
-
-func (s *Syncer) CollectAllItems() error {
-	intentItems, err := s.IntentTenant.CollectAllItems()
-	if err != nil {
-		return fmt.Errorf("collect all intent items: %v", err)
-	}
-	intentItemsLookup := make(map[string]struct{})
-	for _, item := range intentItems {
-		intentItemsLookup[item.SellerSKU] = struct{}{}
-	}
-
-	// Collect all items that are not intent items.
-	itemsOutsideIntent := make(map[string]*models.Item)
-	for _, tenant := range s.nonIntentTenants() {
-		items, err := tenant.CollectAllItems()
-		if err != nil {
-			return fmt.Errorf("collect tenant items for %q: %v", tenant.Tenant().Name, err)
-		}
-		for i, item := range items {
-			_, err := s.tenantInventory(tenant.Tenant().Name, item.SellerSKU)
-			// If not found, means that this is the first time we detected
-			// the item on this tenant.
-			if err == models.ErrNotFound {
-				log.Infof("recording tenant inventory: %s: %s", tenant.Tenant().Name, item.SellerSKU)
-				// Get fresh copy from the tenant.
-				fresh, err := tenant.LoadItem(item.SellerSKU)
-				if err != nil {
-					return fmt.Errorf("get fresh item: %v", err)
-				}
-				// Save fresh copy to the tenant inventory.
-				err = s.saveTenantInventory(tenant.Tenant().Name, fresh)
-				if err != nil {
-					return fmt.Errorf("save fresh item: %v", err)
-				}
-			} else if err != nil {
-				return fmt.Errorf("retrieving cached item: %v", err)
-			}
-			if _, ok := intentItemsLookup[item.SellerSKU]; !ok {
-				itemsOutsideIntent[item.SellerSKU] = items[i]
-			}
-		}
-	}
-
-	// Save all new items that are not in the intent into the intent.
-	for sku, item := range itemsOutsideIntent {
-		log.Infof("Recording intent item: %s", sku)
-		err := s.saveTenantInventory(s.IntentTenant.Tenant().Name, item)
-		if err != nil {
-			return fmt.Errorf("save tenant items: %v", err)
-		}
-	}
-
-	return nil
 }
 
 // SyncItem tries to sync a single seller sku across all tenants.
