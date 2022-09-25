@@ -1,68 +1,12 @@
 package main
 
 import (
-	"time"
-
 	"github.com/nmcapule/oclz-go/syncer"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 
 	log "github.com/sirupsen/logrus"
 )
-
-type loopConfig struct {
-	initialWait time.Duration
-	retryWait   time.Duration
-}
-
-func launchLoop(fn func(quit chan struct{}), config loopConfig) error {
-	time.Sleep(config.initialWait)
-	quit := make(chan struct{})
-	fn(quit)
-	ticker := time.NewTicker(config.retryWait)
-	for {
-		select {
-		case <-ticker.C:
-			fn(quit)
-		case <-quit:
-			return nil
-		}
-	}
-}
-
-func daemon(app *pocketbase.PocketBase) {
-	syncer, err := syncer.NewSyncer(app.Dao(), "circuit.rocks")
-	if err != nil {
-		log.Fatalf("instantiate syncer: %v", err)
-	}
-
-	// go launchLoop(func(quit chan struct{}) {
-	// 	log.Infoln("collect inventory...")
-	// 	if err := syncer.CollectAllItems(); err != nil {
-	// 		log.Fatalf("collect all live tenant items: %v", err)
-	// 	}
-	// }, loopConfig{initialWait: 5 * time.Second, retryWait: 24 * time.Hour})
-	go launchLoop(func(quit chan struct{}) {
-		log.Infoln("refreshing oauth2 credentials...")
-		if err := syncer.RefreshCredentials(); err != nil {
-			log.Fatalf("refreshing all tenants credentials: %v", err)
-		}
-	}, loopConfig{retryWait: 1 * time.Hour})
-
-	// launchLoop(func(quit chan struct{}) {
-	// 	log.Info("sync inventory...")
-	// 	items, err := syncer.IntentTenant.CollectAllItems()
-	// 	if err != nil {
-	// 		log.Fatalf("collect all intent items: %v", err)
-	// 	}
-	// 	for _, item := range items {
-	// 		err := syncer.SyncItem(item.SellerSKU)
-	// 		if err != nil {
-	// 			log.Fatalf("syncing %q: %v", item.SellerSKU, err)
-	// 		}
-	// 	}
-	// }, loopConfig{retryWait: 5 * time.Second})
-}
 
 func main() {
 	app := pocketbase.New()
@@ -72,7 +16,18 @@ func main() {
 		if *noSync {
 			return nil
 		}
-		go daemon(app)
+		syncer, err := syncer.NewSyncer(app.Dao(), "circuit.rocks")
+		if err != nil {
+			log.Fatalf("instantiate syncer: %v", err)
+		}
+		go func() {
+			log.Infoln("Syncer background service has started.")
+			err := syncer.Start()
+			if err != nil {
+				log.Fatalf("Syncer background service unexpectedly exited: %v", err)
+			}
+			log.Infoln("Syncer background service has finished.")
+		}()
 		return nil
 	})
 
