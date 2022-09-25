@@ -2,13 +2,13 @@
 package opencart
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
 
 	"github.com/nmcapule/oclz-go/integrations/models"
+	"github.com/nmcapule/oclz-go/utils"
 	"github.com/tidwall/gjson"
 
 	log "github.com/sirupsen/logrus"
@@ -31,12 +31,12 @@ type Client struct {
 
 // CollectAllItems collects and returns all items registered in this client.
 func (c *Client) CollectAllItems() ([]*models.Item, error) {
-	return c.loadPaginatedItems(nil)
+	return c.loadCatalogProductPages(nil)
 }
 
 // LoadItem returns item info for a single SKU.
 func (c *Client) LoadItem(sku string) (*models.Item, error) {
-	items, err := c.loadPaginatedItems(url.Values{
+	items, err := c.loadCatalogProductPages(url.Values{
 		"filter_model": []string{sku},
 	})
 	if err != nil {
@@ -62,7 +62,14 @@ func (c *Client) LoadItem(sku string) (*models.Item, error) {
 	return items[0], nil
 }
 
-func (c *Client) loadPaginatedItems(query url.Values) ([]*models.Item, error) {
+// SaveItem saves item info for a single SKU.
+// This only implements updating the product stock.
+func (c *Client) SaveItem(item *models.Item) error {
+	log.Warn("Cannot sync %q: SaveItem is unimplemented in %s", item.SellerSKU, c.Name)
+	return nil
+}
+
+func (c *Client) loadCatalogProductPages(query url.Values) ([]*models.Item, error) {
 	if query == nil {
 		query = make(url.Values)
 	}
@@ -74,18 +81,18 @@ func (c *Client) loadPaginatedItems(query url.Values) ([]*models.Item, error) {
 		base, err := c.request(&http.Request{
 			Method: http.MethodGet,
 			URL:    c.url("/catalog/product", query),
-		}, responseParser(catalogProductParser))
+		}, responseParser(scrapeCatalogProduct))
 		if err != nil {
 			return nil, fmt.Errorf("request to /catalog/product: %v", err)
 		}
-		for _, item := range base.Get("data.rows").Array() {
+		for _, row := range base.Get("data.rows").Array() {
 			items = append(items, &models.Item{
-				SellerSKU: item.Get("model").String(),
-				Stocks:    int(item.Get("quantity").Int()),
-				TenantProps: mustGJSON(map[string]interface{}{
-					"product_name": item.Get("product_name").String(),
-					"price":        item.Get("price").Float(),
-					"status":       item.Get("status").String(),
+				SellerSKU: row.Get("model").String(),
+				Stocks:    int(row.Get("quantity").Int()),
+				TenantProps: utils.GJSONFrom(map[string]interface{}{
+					"product_name": row.Get("product_name").String(),
+					"price":        row.Get("price").Float(),
+					"status":       row.Get("status").String(),
 				}),
 			})
 		}
@@ -103,17 +110,38 @@ func (c *Client) loadPaginatedItems(query url.Values) ([]*models.Item, error) {
 	return items, nil
 }
 
-// SaveItem saves item info for a single SKU.
-// This only implements updating the product stock.
-func (c *Client) SaveItem(item *models.Item) error {
-	log.Warn("Cannot sync %q: SaveItem is unimplemented in %s", item.SellerSKU, c.Name)
-	return nil
-}
-
-func mustGJSON(v any) gjson.Result {
-	b, err := json.Marshal(v)
-	if err != nil {
-		log.Fatalf("serializing JSON: %v", err)
+func (c *Client) loadSaleOrderPages(query url.Values) (*gjson.Result, error) {
+	if query == nil {
+		query = make(url.Values)
 	}
-	return gjson.ParseBytes(b)
+
+	page := 1
+	var orders []map[string]any
+	for {
+		query.Set("page", strconv.Itoa(page))
+		base, err := c.request(&http.Request{
+			Method: http.MethodGet,
+			URL:    c.url("/sale/order", query),
+		}, responseParser(scrapeSaleOrder))
+		if err != nil {
+			return nil, fmt.Errorf("request to /sale/order: %v", err)
+		}
+		for _, row := range base.Get("data.rows").Array() {
+			orders = append(orders, map[string]any{
+				"seller_sku": row.Get("model").String(),
+				"stocks":     row.Get("quantity").Float(),
+			})
+		}
+		log.WithFields(log.Fields{
+			"items":  len(orders),
+			"offset": base.Get("data.offset").Int(),
+			"total":  base.Get("data.total").Int(),
+		}).Infof("%s: loading sale orders", c.Name)
+
+		if page == int(base.Get("data.pages").Int()) {
+			break
+		}
+		page += 1
+	}
+	return utils.GJSONFrom(orders), nil
 }

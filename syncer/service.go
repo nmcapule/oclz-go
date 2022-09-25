@@ -42,21 +42,21 @@ func (s *Syncer) Start() error {
 	go scheduler.Loop(func(quit chan struct{}) {
 		log.Infoln("refreshing oauth2 credentials...")
 		if err := s.RefreshCredentials(); err != nil {
-			log.Fatalf("refreshing all tenants credentials: %v", err)
+			log.Fatalf("Refreshing all tenants credentials: %v", err)
 		}
 	}, scheduler.LoopConfig{RetryWait: 30 * time.Minute})
 
 	return scheduler.Loop(func(quit chan struct{}) {
-		log.Info("sync inventory...")
-		items, err := s.IntentTenant.CollectAllItems()
-		if err != nil {
-			log.Fatalf("collect all intent items: %v", err)
-		}
-		for _, item := range items {
-			err := s.SyncItem(item.SellerSKU)
-			if err != nil {
-				log.Fatalf("syncing %q: %v", item.SellerSKU, err)
-			}
-		}
+		log.Info("Sync inventory...")
+		// items, err := s.IntentTenant.CollectAllItems()
+		// if err != nil {
+		// 	log.Fatalf("collect all intent items: %v", err)
+		// }
+		// for _, item := range items {
+		// 	err := s.SyncItem(item.SellerSKU)
+		// 	if err != nil {
+		// 		log.Fatalf("syncing %q: %v", item.SellerSKU, err)
+		// 	}
+		// }
 	}, scheduler.LoopConfig{RetryWait: 1 * time.Hour})
 }

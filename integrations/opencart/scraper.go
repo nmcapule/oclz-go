@@ -1,21 +1,22 @@
 package opencart
 
 import (
-	"encoding/json"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	log "github.com/sirupsen/logrus"
+	"github.com/nmcapule/oclz-go/utils"
+	"github.com/tidwall/gjson"
 )
 
 var pagesRe = regexp.MustCompile(`(?P<offset>\d+) to (?P<offset_limit>\d+) of (?P<total>\d+) \((?P<pages>\d+) Pages\)`)
 
-func catalogProductParser(input string) string {
+func scrapeCatalogProduct(input string) (*gjson.Result, error) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(input))
 	if err != nil {
-		log.Fatalf("parsing doc: %v", err)
+		return nil, fmt.Errorf("parsing doc: %v", err)
 	}
 	var rows []map[string]interface{}
 	doc.Find("#form-product > div > table > tbody > tr").Each(func(_ int, s *goquery.Selection) {
@@ -33,7 +34,7 @@ func catalogProductParser(input string) string {
 	total, _ := strconv.Atoi(tokens[pagesRe.SubexpIndex("total")])
 	pages, _ := strconv.Atoi(tokens[pagesRe.SubexpIndex("pages")])
 	// TODO(nmcapule): Handle other errors.
-	b, err := json.Marshal(map[string]interface{}{
+	return utils.GJSONFrom(map[string]interface{}{
 		"code":    0,
 		"message": "Success",
 		"data": map[string]interface{}{
@@ -43,9 +44,40 @@ func catalogProductParser(input string) string {
 			"total":  total,
 			"pages":  pages,
 		},
-	})
+	}), nil
+}
+
+func scrapeSaleOrder(input string) (*gjson.Result, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(input))
 	if err != nil {
-		log.Fatalf("encoding rows: %v", err)
+		return nil, fmt.Errorf("parsing doc: %v", err)
 	}
-	return string(b)
+	var rows []map[string]interface{}
+	doc.Find(`div[id^="collapse_products_"] > div > table > tbody > tr`).Each(func(_ int, s *goquery.Selection) {
+		model := strings.TrimSpace(s.Find("td:nth-child(3)").Text())
+		if model == "" {
+			return
+		}
+		rows = append(rows, map[string]interface{}{
+			"model":    model,
+			"quantity": strings.TrimSpace(s.Find("td:nth-child(4)").Text()),
+		})
+	})
+	tokens := pagesRe.FindStringSubmatch(doc.Find("#form-order + div > div + div").Text())
+	offset, _ := strconv.Atoi(tokens[pagesRe.SubexpIndex("offset")])
+	offsetLimit, _ := strconv.Atoi(tokens[pagesRe.SubexpIndex("offset_limit")])
+	total, _ := strconv.Atoi(tokens[pagesRe.SubexpIndex("total")])
+	pages, _ := strconv.Atoi(tokens[pagesRe.SubexpIndex("pages")])
+	// TODO(nmcapule): Handle other errors.
+	return utils.GJSONFrom(map[string]interface{}{
+		"code":    0,
+		"message": "Success",
+		"data": map[string]interface{}{
+			"rows":   rows,
+			"offset": offset - 1,
+			"limit":  offsetLimit - offset + 1,
+			"total":  total,
+			"pages":  pages,
+		},
+	}), nil
 }

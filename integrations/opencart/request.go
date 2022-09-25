@@ -15,12 +15,12 @@ import (
 )
 
 type requestConfig struct {
-	parser func(input string) string
+	parser func(input string) (*gjson.Result, error)
 }
 
 type requestOption func(cfg *requestConfig)
 
-func responseParser(parser func(input string) string) func(cfg *requestConfig) {
+func responseParser(parser func(input string) (*gjson.Result, error)) func(cfg *requestConfig) {
 	return func(cfg *requestConfig) {
 		cfg.parser = parser
 	}
@@ -81,7 +81,7 @@ func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Resul
 		return nil, fmt.Errorf("read body: %v", err)
 	}
 	if config.parser != nil {
-		b = []byte(config.parser(string(b)))
+		return config.parser(string(b))
 	}
 	gj := gjson.ParseBytes(b)
 	return &gj, nil
