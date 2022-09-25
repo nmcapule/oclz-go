@@ -169,7 +169,7 @@ func (s *Syncer) CollectAllItems() error {
 	}
 
 	// Collect all items that are not intent items.
-	var itemsOutsideIntent []*models.Item
+	itemsOutsideIntent := make(map[string]*models.Item)
 	for _, tenant := range s.nonIntentTenants() {
 		items, err := tenant.CollectAllItems()
 		if err != nil {
@@ -194,15 +194,15 @@ func (s *Syncer) CollectAllItems() error {
 			} else if err != nil {
 				return fmt.Errorf("retrieving cached item: %v", err)
 			}
-
 			if _, ok := intentItemsLookup[item.SellerSKU]; !ok {
-				itemsOutsideIntent = append(itemsOutsideIntent, items[i])
+				itemsOutsideIntent[item.SellerSKU] = items[i]
 			}
 		}
 	}
 
 	// Save all new items that are not in the intent into the intent.
-	for _, item := range itemsOutsideIntent {
+	for sku, item := range itemsOutsideIntent {
+		log.Infof("Recording intent item: %s", sku)
 		err := s.saveTenantInventory(s.IntentTenant.Tenant().Name, item)
 		if err != nil {
 			return fmt.Errorf("save tenant items: %v", err)

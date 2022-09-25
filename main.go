@@ -36,12 +36,12 @@ func daemon(app *pocketbase.PocketBase) {
 		log.Fatalf("instantiate syncer: %v", err)
 	}
 
-	go launchLoop(func(quit chan struct{}) {
-		log.Infoln("collect inventory...")
-		if err := syncer.CollectAllItems(); err != nil {
-			log.Fatalf("collect all live tenant items: %v", err)
-		}
-	}, loopConfig{initialWait: 5 * time.Second, retryWait: 24 * time.Hour})
+	// go launchLoop(func(quit chan struct{}) {
+	// 	log.Infoln("collect inventory...")
+	// 	if err := syncer.CollectAllItems(); err != nil {
+	// 		log.Fatalf("collect all live tenant items: %v", err)
+	// 	}
+	// }, loopConfig{initialWait: 5 * time.Second, retryWait: 24 * time.Hour})
 	go launchLoop(func(quit chan struct{}) {
 		log.Infoln("refreshing oauth2 credentials...")
 		if err := syncer.RefreshCredentials(); err != nil {
