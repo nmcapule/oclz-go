@@ -16,3 +16,13 @@ docker run \
   -e LITESTREAM_SECRET_ACCESS_KEY \
   latest
 ```
+
+## Deploying to Fly.io
+
+```sh
+flyctl secrets set REPLICA_URL=<your replica url>
+flyctl secrets set LITESTREAM_ACCESS_KEY_ID=<your s3 access key id>
+flyctl secrets set LITESTREAM_SECRET_ACCESS_KEY=<your s3 secret access key>
+
+flyctl deploy
+```
