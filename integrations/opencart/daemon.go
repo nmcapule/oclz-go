@@ -1,7 +1,6 @@
 package opencart
 
 import (
-	"net/url"
 	"time"
 
 	"github.com/nmcapule/oclz-go/integrations/models"
@@ -20,9 +19,9 @@ func (c *Client) Start() error {
 			"tenant": c.Name,
 		}).Infoln("Collecting recent sale orders...")
 
-		log.Fatalln(c.loadSaleOrderPages(url.Values{
-			"filter_date_modified": []string{"2022-09-13"},
-		}))
+		// log.Fatalln(c.loadSaleOrderPages(url.Values{
+		// 	"filter_date_modified": []string{"2022-09-13"},
+		// }))
 	}, scheduler.LoopConfig{RetryWait: 5 * time.Second})
 	return nil
 }
