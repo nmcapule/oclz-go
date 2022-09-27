@@ -8,8 +8,8 @@ import (
 	pbm "github.com/pocketbase/pocketbase/models"
 )
 
-// BackgroundService is a background running service.
-type BackgroundService interface {
+// Daemon is a background running service.
+type Daemon interface {
 	Start() error
 }
 
@@ -20,7 +20,7 @@ type IntegrationClient interface {
 	LoadItem(sku string) (*Item, error)
 	SaveItem(item *Item) error
 	CredentialsManager() oauth2.CredentialsManager
-	BackgroundService() BackgroundService
+	Daemon() Daemon
 }
 
 type BaseTenant struct {

@@ -10,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (c *Client) BackgroundService() models.BackgroundService {
+func (c *Client) Daemon() models.Daemon {
 	return c
 }
 

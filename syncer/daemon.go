@@ -12,7 +12,7 @@ import (
 // Start starts the syncer's background service.
 func (s *Syncer) Start() error {
 	for i := range s.Tenants {
-		job := s.Tenants[i].BackgroundService()
+		job := s.Tenants[i].Daemon()
 		if job == nil {
 			continue
 		}
@@ -32,12 +32,12 @@ func (s *Syncer) Start() error {
 		}(s.Tenants[i])
 	}
 
-	// go scheduler.Launch(func(quit chan struct{}) {
-	// 	log.Infoln("collect inventory...")
-	// 	if err := s.CollectAllItems(); err != nil {
-	// 		log.Fatalf("collect all live tenant items: %v", err)
-	// 	}
-	// }, scheduler.LoopConfig{InitialWait: 5 * time.Second, RetryWait: 24 * time.Hour})
+	go scheduler.Loop(func(quit chan struct{}) {
+		log.Infoln("collect inventory...")
+		if err := s.CollectAllItems(); err != nil {
+			log.Fatalf("collect all live tenant items: %v", err)
+		}
+	}, scheduler.LoopConfig{InitialWait: 5 * time.Second, RetryWait: 24 * time.Hour})
 
 	go scheduler.Loop(func(quit chan struct{}) {
 		log.Infoln("refreshing oauth2 credentials...")
@@ -48,15 +48,15 @@ func (s *Syncer) Start() error {
 
 	return scheduler.Loop(func(quit chan struct{}) {
 		log.Info("Sync inventory...")
-		// items, err := s.IntentTenant.CollectAllItems()
-		// if err != nil {
-		// 	log.Fatalf("collect all intent items: %v", err)
-		// }
-		// for _, item := range items {
-		// 	err := s.SyncItem(item.SellerSKU)
-		// 	if err != nil {
-		// 		log.Fatalf("syncing %q: %v", item.SellerSKU, err)
-		// 	}
-		// }
-	}, scheduler.LoopConfig{RetryWait: 1 * time.Hour})
+		items, err := s.IntentTenant.CollectAllItems()
+		if err != nil {
+			log.Fatalf("collect all intent items: %v", err)
+		}
+		for _, item := range items {
+			err := s.SyncItem(item.SellerSKU)
+			if err != nil {
+				log.Fatalf("syncing %q: %v", item.SellerSKU, err)
+			}
+		}
+	}, scheduler.LoopConfig{InitialWait: 1 * time.Hour, RetryWait: 3 * time.Hour})
 }

@@ -70,6 +70,6 @@ func (c *Client) CredentialsManager() oauth2.CredentialsManager {
 	return nil
 }
 
-func (c *Client) BackgroundService() models.BackgroundService {
+func (c *Client) Daemon() models.Daemon {
 	return nil
 }
