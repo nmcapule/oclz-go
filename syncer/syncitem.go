@@ -19,7 +19,7 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 			log.WithFields(log.Fields{
 				"seller_sku": sellerSKU,
 				"tenant":     tenant.Tenant().Name,
-			}).Infoln("Item not found")
+			}).Debugln("Item not found")
 			continue
 		}
 		if err != nil {
@@ -51,7 +51,7 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 	targetStocks := tenantItemMap[s.IntentTenant.Tenant().Name].Stocks
 	targetStocks += totalDelta
 	if targetStocks < 0 {
-		log.Printf("warning: %s has negative stocks, setting to 0", sellerSKU)
+		log.Warnf("warning: %s has negative stocks, setting to 0", sellerSKU)
 	}
 
 	for _, tenant := range s.Tenants {
@@ -60,7 +60,7 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 			log.WithFields(log.Fields{
 				"seller_sku": sellerSKU,
 				"tenant":     tenant.Tenant().Name,
-			}).Infoln("Skip item sync, does not exist in tenant")
+			}).Debugln("Skip item sync, does not exist in tenant")
 			continue
 		}
 		// Skip update if has the same stock as the intent tenant.
