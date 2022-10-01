@@ -26,7 +26,7 @@ func (c *Client) GenerateAuthorizationURL() string {
 	return c.url(endpoint, url.Values{
 		"partner_id": []string{strconv.FormatInt(c.Config.PartnerID, 10)},
 		"timestamp":  []string{strconv.FormatInt(timestamp, 10)},
-		"sign":       []string{signature(c.Config, endpoint, timestamp)},
+		"sign":       []string{signature(c.Config, c.Credentials, endpoint, timestamp, signatureModePublicAPI)},
 		"redirect":   []string{c.Config.RedirectURI},
 	}).String()
 }

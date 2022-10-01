@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nmcapule/oclz-go/oauth2"
 	"github.com/tidwall/gjson"
 
 	log "github.com/sirupsen/logrus"
@@ -22,9 +23,19 @@ const (
 	codeCallLimit = "TODO(ncapule): Find out the code for this"
 )
 
+type mode int
+
+const (
+	signatureModeNone mode = iota
+	signatureModeShopAPI
+	signatureModeMerchantAPI
+	signatureModePublicAPI
+)
+
 type requestConfig struct {
 	stripAccessToken bool
 	stripShopID      bool
+	signatureMode    mode
 }
 
 type requestOption func(cfg *requestConfig)
@@ -32,6 +43,12 @@ type requestOption func(cfg *requestConfig)
 func tokenRetrievalMode(cfg *requestConfig) {
 	cfg.stripAccessToken = true
 	cfg.stripShopID = true
+}
+
+func signatureMode(sigMode mode) requestOption {
+	return func(cfg *requestConfig) {
+		cfg.signatureMode = sigMode
+	}
 }
 
 func (c *Client) url(endpoint string, query url.Values) *url.URL {
@@ -58,7 +75,7 @@ func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Resul
 	query := req.URL.Query()
 	query.Set("partner_id", strconv.FormatInt(c.Config.PartnerID, 10))
 	query.Set("timestamp", strconv.FormatInt(timestamp, 10))
-	query.Set("sign", signature(c.Config, endpoint, timestamp))
+	query.Set("sign", signature(c.Config, c.Credentials, endpoint, timestamp, config.signatureMode))
 	if !config.stripAccessToken {
 		query.Set("access_token", c.Credentials.AccessToken)
 	}
@@ -81,7 +98,7 @@ func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Resul
 		}
 		gres = gjson.ParseBytes(b)
 		if gres.Get("warning").String() != codeOk {
-			log.Warningf("Shopee request warning: %s", gres.Get("warning").String())
+			log.Debugf("Shopee request warning: %s", gres.Get("warning").String())
 		}
 		if gres.Get("error").String() == codeOk {
 			break
@@ -101,8 +118,17 @@ func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Resul
 	return &gres, nil
 }
 
-func signature(config *Config, endpoint string, timestamp int64) string {
+func signature(config *Config, creds *oauth2.Credentials, endpoint string, timestamp int64, signatureMode mode) string {
 	base := fmt.Sprintf("%d%s%d", config.PartnerID, endpoint, timestamp)
+	switch signatureMode {
+	case signatureModeShopAPI:
+		base = fmt.Sprintf("%s%s%d", base, creds.AccessToken, config.ShopID)
+	case signatureModeMerchantAPI:
+		log.Errorf("unimplemented: %s", signatureMode)
+	default:
+		log.Debugf("passthru: %s", signatureMode)
+	}
+
 	h := hmac.New(sha256.New, []byte(config.PartnerKey))
 	if _, err := h.Write([]byte(base)); err != nil {
 		log.Fatalf("Failed to hash %q: %v", base, err)
