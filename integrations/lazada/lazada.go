@@ -3,13 +3,17 @@ package lazada
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/nmcapule/oclz-go/integrations/models"
 	"github.com/nmcapule/oclz-go/oauth2"
 	"github.com/nmcapule/oclz-go/utils"
+	"github.com/nmcapule/oclz-go/utils/scheduler"
 	"github.com/tidwall/gjson"
 
 	log "github.com/sirupsen/logrus"
@@ -92,19 +96,78 @@ func (c *Client) LoadItem(sku string) (*models.Item, error) {
 // SaveItem saves item info for a single SKU.
 // This only implements updating the product stock.
 func (c *Client) SaveItem(item *models.Item) error {
-	log.Warn("Cannot sync %q: SaveItem is unimplemented in %s", item.SellerSKU, c.Name)
-	return nil
+	xml := fmt.Sprintf(`
+		<Request>
+			<Product>
+				<Skus>
+					<Sku>
+						<ItemId>%d</ItemId>
+						<SkuId>%d</SkuId>
+						<SellerSku>%s</SellerSku>
+						<Quantity>%d</Quantity>
+					</Sku>
+				</Skus>
+			</Product>
+		</Request>`,
+		item.TenantProps.Get("item_id").Int(),
+		item.TenantProps.Get("sku_id").Int(),
+		item.SellerSKU,
+		// TODO(nmcapule): Find a better way to resolve this. This depend on
+		// the syncer always giving the latest state of the item.
+		item.Stocks+int(item.TenantProps.Get("reserved").Int()))
+
+	_, err := c.request(&http.Request{
+		Method: http.MethodPost,
+		URL:    c.url("/product/price_quantity/update", nil),
+		Body: io.NopCloser(strings.NewReader(url.Values{
+			"payload": []string{xml},
+		}.Encode())),
+	})
+	if err != nil {
+		return fmt.Errorf("send request: %v", err)
+	}
+
+	// Poll until the update is confirmed propagated to Lazada.
+	return scheduler.Retry(func() bool {
+		log.WithFields(log.Fields{
+			"tenant":     c.Tenant().Name,
+			"seller_sku": item.SellerSKU,
+		}).Infof("Confirming item update...")
+		live, err := c.LoadItem(item.SellerSKU)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"tenant":     c.Tenant().Name,
+				"seller_sku": item.SellerSKU,
+			}).Errorf("Confirming item update: %v", err)
+		}
+		return live.Stocks == item.Stocks
+	}, scheduler.RetryConfig{
+		RetryWait:       time.Second,
+		RetryLimit:      3,
+		BackoffMultiply: 1.5,
+	})
 }
 
 func parseItemsFromProduct(product gjson.Result) []*models.Item {
 	var items []*models.Item
 	for _, skuRaw := range product.Get("skus").Array() {
 		sku := gjson.Parse(skuRaw.String())
+
+		var totalQuantity int64
+		for _, n := range sku.Get("multiWarehouseInventories.#.totalQuantity").Array() {
+			totalQuantity += n.Int()
+		}
+		var sellableQuantity = sku.Get("quantity").Int()
+
 		items = append(items, &models.Item{
 			SellerSKU: sku.Get("SellerSku").String(),
-			Stocks:    int(sku.Get("quantity").Int()),
+			Stocks:    int(sellableQuantity),
 			TenantProps: utils.GJSONFrom(map[string]interface{}{
-				"item_id": product.Get("item_id").String(),
+				"item_id":  product.Get("item_id").Int(),
+				"sku_id":   sku.Get("SkuId").Int(),
+				"shop_sku": sku.Get("ShopSku").String(),
+				"price":    sku.Get("price").Float(),
+				"reserved": totalQuantity - sellableQuantity,
 			}),
 		})
 	}

@@ -34,22 +34,6 @@ func (s *Syncer) Start() error {
 
 	go scheduler.Loop(func(quit chan struct{}) {
 		log.Infoln("collect inventory...")
-		// tenant := s.Tenants["CIRCUIT_ROCKS_LAZADA"]
-		// item, err := tenant.LoadItem("2325")
-		// if err != nil {
-		// 	log.Fatalln("error loading item:", err)
-		// }
-		// log.Infof("old item: %+v", item)
-		// item.Stocks = 4788
-		// err = tenant.SaveItem(item)
-		// if err != nil {
-		// 	log.Fatalln("error saving item:", err)
-		// }
-		// item, err = tenant.LoadItem("2325")
-		// if err != nil {
-		// 	log.Fatalln("error loading item:", err)
-		// }
-		// log.Fatalf("new item: %+v", item)
 		if err := s.CollectAllItems(); err != nil {
 			log.Fatalf("collect all live tenant items: %v", err)
 		}

@@ -57,6 +57,7 @@ func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Resul
 	// Harvest endpoint and query from request.
 	baseURL, _ := url.Parse(c.Config.Domain)
 	endpoint := strings.TrimPrefix(req.URL.Path, baseURL.Path)
+
 	query := req.URL.Query()
 	query.Set("app_key", c.Config.AppKey)
 	query.Set("timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
@@ -64,8 +65,27 @@ func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Resul
 		query.Set("access_token", c.Credentials.AccessToken)
 	}
 	query.Set("sign_method", "sha256")
-	query.Set("sign", signature(c.Config.AppSecret, endpoint, query))
-	req.URL.RawQuery = query.Encode()
+	if req.Method == http.MethodGet {
+		query.Set("sign", signature(c.Config.AppSecret, endpoint, query))
+		req.URL.RawQuery = query.Encode()
+	} else if req.Method == http.MethodPost {
+		// If method is POST, attach the usual query params to the body.
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			return nil, fmt.Errorf("read body: %v", err)
+		}
+		parsedQuery, err := url.ParseQuery(string(body))
+		if err != nil {
+			return nil, fmt.Errorf("parse body: %v", err)
+		}
+		for key, values := range parsedQuery {
+			for _, v := range values {
+				query.Add(key, v)
+			}
+		}
+		query.Set("sign", signature(c.Config.AppSecret, endpoint, query))
+		req.Body = io.NopCloser(strings.NewReader(query.Encode()))
+	}
 
 	retry := 3
 	backoff := 1
