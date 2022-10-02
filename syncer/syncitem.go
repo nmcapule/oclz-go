@@ -30,6 +30,10 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 			return fmt.Errorf("loading live item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
 		}
 		totalDelta += current.Stocks - cached.Stocks
+		log.WithFields(log.Fields{
+			"tenant":     tenant.Tenant().Name,
+			"seller_sku": sellerSKU,
+		}).Debugln("Load fresh item")
 
 		if totalDelta != 0 {
 			err := s.saveInventoryDelta(&inventoryDelta{
