@@ -37,7 +37,7 @@ func (s *Syncer) Start() error {
 		if err := s.CollectAllItems(); err != nil {
 			log.Fatalf("collect all live tenant items: %v", err)
 		}
-	}, scheduler.LoopConfig{InitialWait: 1 * time.Hour, RetryWait: 24 * time.Hour})
+	}, scheduler.LoopConfig{RetryWait: 24 * time.Hour})
 
 	go scheduler.Loop(func(quit chan struct{}) {
 		log.Infoln("refreshing oauth2 credentials...")
@@ -63,5 +63,5 @@ func (s *Syncer) Start() error {
 				log.Fatalf("syncing %q: %v", item.SellerSKU, err)
 			}
 		}
-	}, scheduler.LoopConfig{RetryWait: 3 * time.Hour})
+	}, scheduler.LoopConfig{InitialWait: 1 * time.Hour, RetryWait: 3 * time.Hour})
 }

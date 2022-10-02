@@ -96,6 +96,7 @@ func (c *Client) LoadItem(sku string) (*models.Item, error) {
 // SaveItem saves item info for a single SKU.
 // This only implements updating the product stock.
 func (c *Client) SaveItem(item *models.Item) error {
+	// Compose the payload.
 	xml := fmt.Sprintf(`
 		<Request>
 			<Product>
@@ -116,6 +117,7 @@ func (c *Client) SaveItem(item *models.Item) error {
 		// the syncer always giving the latest state of the item.
 		item.Stocks+int(item.TenantProps.Get("reserved").Int()))
 
+	// Do the actual update.
 	_, err := c.request(&http.Request{
 		Method: http.MethodPost,
 		URL:    c.url("/product/price_quantity/update", nil),

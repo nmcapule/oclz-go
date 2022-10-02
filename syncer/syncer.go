@@ -80,7 +80,7 @@ func (s *Syncer) register(tenantName string) error {
 }
 
 func (s *Syncer) RefreshCredentials() error {
-	const expiryThreshold = time.Hour
+	const expiryThreshold = 6 * time.Hour
 
 	now := time.Now()
 	oauth2Service := &oauth2.Service{Dao: s.Dao}

@@ -56,6 +56,7 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 	targetStocks += totalDelta
 	if targetStocks < 0 {
 		log.Warnf("warning: %s has negative stocks, setting to 0", sellerSKU)
+		targetStocks = 0
 	}
 
 	for _, tenant := range s.Tenants {
