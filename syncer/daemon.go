@@ -34,10 +34,9 @@ func (s *Syncer) Start() error {
 
 	go scheduler.Loop(func(quit chan struct{}) {
 		log.Infoln("collect inventory...")
-		// if err := s.CollectAllItems(); err != nil {
-		// 	log.Fatalf("collect all live tenant items: %v", err)
-		// }
-		s.Tenants["CIRCUIT_ROCKS_SHOPEE"].LoadItem("284")
+		if err := s.CollectAllItems(); err != nil {
+			log.Fatalf("collect all live tenant items: %v", err)
+		}
 	}, scheduler.LoopConfig{InitialWait: 5 * time.Second, RetryWait: 24 * time.Hour})
 
 	go scheduler.Loop(func(quit chan struct{}) {
