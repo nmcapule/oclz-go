@@ -93,18 +93,30 @@ func (c *Client) LoadItem(sku string) (*models.Item, error) {
 		return nil, models.ErrNotFound
 	}
 	if len(matches) > 1 {
-		log.Warningf("multiple items retrieved for %s: %+v", sku, matches)
-		// return nil, models.ErrMultipleItems
+		log.Debugf("Multiple items retrieved for search_item %s: %+v", sku, matches)
 	}
-	items, err := c.loadItemsFromProduct(int(matches[0].Int()))
-	if err != nil {
-		return nil, fmt.Errorf("load items: %v", err)
+	// Iterate thru each initial search results.
+	var items []*models.Item
+	for _, match := range matches {
+		parsed, err := c.loadItemsFromProduct(int(match.Int()))
+		if err != nil {
+			return nil, fmt.Errorf("load items: %v", err)
+		}
+		items = append(items, parsed...)
 	}
+	// Only include items that have exact SKU match from search.
+	var filtered []*models.Item
+	for i := range items {
+		if items[i].SellerSKU == sku {
+			filtered = append(filtered, items[i])
+		}
+	}
+	items = filtered
 	if len(items) == 0 {
 		return nil, models.ErrNotFound
 	}
 	if len(items) > 1 {
-		log.Warningf("multiple items retrieved for %s: %+v", sku, items)
+		log.Warningf("Multiple items with same SKU retrieved for %s: %+v", sku, items)
 		// return nil, models.ErrMultipleItems
 	}
 	return items[0], nil

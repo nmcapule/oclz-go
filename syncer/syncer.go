@@ -156,7 +156,7 @@ func (s *Syncer) saveTenantInventory(tenantName string, item *models.Item) error
 	// Check if the record already exists in the collection.
 	records, err := s.Dao.FindRecordsByExpr(collection, dbx.HashExp{
 		"seller_sku": item.SellerSKU,
-		"tenant_id":  item.TenantID,
+		"tenant":     item.TenantID,
 	})
 	if err != nil {
 		return fmt.Errorf("check if already exists: %v", err)

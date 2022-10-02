@@ -44,7 +44,7 @@ func (s *Syncer) CollectAllItems() error {
 					return fmt.Errorf("save fresh item: %v", err)
 				}
 			} else if err != nil {
-				return fmt.Errorf("retrieving cached item: %v", err)
+				return fmt.Errorf("retrieving cached item for %s: %v", item.SellerSKU, err)
 			}
 			if _, ok := intentItemsLookup[item.SellerSKU]; !ok {
 				itemsOutsideIntent[item.SellerSKU] = items[i]
