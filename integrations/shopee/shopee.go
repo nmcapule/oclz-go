@@ -3,13 +3,17 @@ package shopee
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/nmcapule/oclz-go/integrations/models"
 	"github.com/nmcapule/oclz-go/oauth2"
 	"github.com/nmcapule/oclz-go/utils"
+	"github.com/nmcapule/oclz-go/utils/scheduler"
 	"github.com/tidwall/gjson"
 
 	log "github.com/sirupsen/logrus"
@@ -125,8 +129,46 @@ func (c *Client) LoadItem(sku string) (*models.Item, error) {
 // SaveItem saves item info for a single SKU.
 // This only implements updating the product stock.
 func (c *Client) SaveItem(item *models.Item) error {
-	log.Warn("Cannot sync %q: SaveItem is unimplemented in %s", item.SellerSKU, c.Name)
-	return nil
+	itemID := item.TenantProps.Get("item_id").Int()
+	_, err := c.request(&http.Request{
+		Method: http.MethodPost,
+		URL:    c.url("/api/v2/product/update_stock", nil),
+		Body: io.NopCloser(strings.NewReader(utils.GJSONFrom(map[string]any{
+			"item_id": itemID,
+			"stock_list": []map[string]any{
+				{
+					"seller_stock": []map[string]any{
+						{
+							"stock": item.Stocks,
+						},
+					},
+				},
+			},
+		}).String())),
+	}, signatureMode(signatureModeShopAPI))
+	if err != nil {
+		return fmt.Errorf("error response: %v", err)
+	}
+
+	// Poll until the update is confirmed propagated to Shopee.
+	return scheduler.Retry(func() bool {
+		log.WithFields(log.Fields{
+			"tenant":     c.Tenant().Name,
+			"seller_sku": item.SellerSKU,
+		}).Infof("Confirming item update...")
+		live, err := c.LoadItem(item.SellerSKU)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"tenant":     c.Tenant().Name,
+				"seller_sku": item.SellerSKU,
+			}).Errorf("Confirming item update: %v", err)
+		}
+		return live.Stocks == item.Stocks
+	}, scheduler.RetryConfig{
+		RetryWait:       time.Second,
+		RetryLimit:      3,
+		BackoffMultiply: 1.5,
+	})
 }
 
 func (c *Client) loadItemsFromProduct(id int) ([]*models.Item, error) {
