@@ -145,8 +145,8 @@ func (c *Client) SaveItem(item *models.Item) error {
 		return live.Stocks == item.Stocks
 	}, scheduler.RetryConfig{
 		RetryWait:       time.Second,
-		RetryLimit:      3,
-		BackoffMultiply: 1.5,
+		RetryLimit:      10,
+		BackoffMultiply: 2,
 	})
 }
 
