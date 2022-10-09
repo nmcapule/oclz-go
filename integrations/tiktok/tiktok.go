@@ -104,10 +104,11 @@ func (c *Client) CollectAllItems() ([]*models.Item, error) {
 		items = append(items, c.parseItemsFromSearch(base.Get("data"))...)
 
 		log.WithFields(log.Fields{
+			"tenant": c.Name,
 			"items":  len(items),
 			"offset": page * limit,
 			"total":  base.Get("data.total").Int(),
-		}).Infoln("loading items")
+		}).Infof("Loading fresh items")
 
 		if page*limit >= base.Get("data.total").Int() {
 			break
@@ -160,7 +161,7 @@ func (c *Client) LoadItem(sku string) (*models.Item, error) {
 // SaveItem saves item info for a single SKU.
 // This only implements updating the product stock.
 func (c *Client) SaveItem(item *models.Item) error {
-	log.Warn("Cannot sync %q: SaveItem is unimplemented in %s", item.SellerSKU, c.Name)
+	log.Warnf("Cannot sync %q: SaveItem is unimplemented in %s", item.SellerSKU, c.Name)
 	// request := map[string]interface{}{
 	// 	"product_id": item.TenantProps.Get("product_id").String(),
 	// 	"skus": []map[string]interface{}{
@@ -177,5 +178,5 @@ func (c *Client) SaveItem(item *models.Item) error {
 	// }
 	// _, err := c.put("/api/products/stocks", request, nil)
 	// return err
-	return nil
+	return models.ErrUnimplemented
 }

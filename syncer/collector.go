@@ -32,7 +32,10 @@ func (s *Syncer) CollectAllItems() error {
 			// If not found, means that this is the first time we detected
 			// the item on this tenant.
 			if err == models.ErrNotFound {
-				log.Infof("recording tenant inventory: %s: %s", tenant.Tenant().Name, item.SellerSKU)
+				log.WithFields(log.Fields{
+					"tenant":     tenant.Tenant().Name,
+					"seller_sku": item.SellerSKU,
+				}).Infof("Recording tenant inventory")
 				// Get fresh copy from the tenant.
 				fresh, err := tenant.LoadItem(item.SellerSKU)
 				if err != nil {
@@ -53,8 +56,11 @@ func (s *Syncer) CollectAllItems() error {
 	}
 
 	// Save all new items that are not in the intent into the intent.
-	for sku, item := range itemsOutsideIntent {
-		log.Infof("Recording intent item: %s", sku)
+	for _, item := range itemsOutsideIntent {
+		log.WithFields(log.Fields{
+			"tenant":     s.IntentTenant.Tenant().Name,
+			"seller_sku": item.SellerSKU,
+		}).Infof("Recording intent tenant inventory")
 		err := s.saveTenantInventory(s.IntentTenant.Tenant().Name, item)
 		if err != nil {
 			return fmt.Errorf("save tenant items: %v", err)

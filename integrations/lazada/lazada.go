@@ -59,10 +59,11 @@ func (c *Client) CollectAllItems() ([]*models.Item, error) {
 			items = append(items, parseItemsFromProduct(product)...)
 		}
 		log.WithFields(log.Fields{
+			"tenant": c.Name,
 			"items":  len(items),
 			"offset": offset,
 			"total":  base.Get("data.total_products").Int(),
-		}).Infof("%s: loading items", c.Name)
+		}).Infof("Loading fresh items")
 
 		offset += limit
 		if offset >= int(base.Get("data.total_products").Int()) {

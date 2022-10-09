@@ -66,10 +66,11 @@ func (c *Client) CollectAllItems() ([]*models.Item, error) {
 		}
 
 		log.WithFields(log.Fields{
+			"tenant": c.Name,
 			"items":  len(items),
 			"offset": offset,
 			"total":  base.Get("response.total_count").Int(),
-		}).Infoln("loading items")
+		}).Infof("Loading fresh items")
 
 		if !base.Get("response.has_next_page").Bool() {
 			break
@@ -153,13 +154,13 @@ func (c *Client) SaveItem(item *models.Item) error {
 	// Poll until the update is confirmed propagated to Shopee.
 	return scheduler.Retry(func() bool {
 		log.WithFields(log.Fields{
-			"tenant":     c.Tenant().Name,
+			"tenant":     c.Name,
 			"seller_sku": item.SellerSKU,
 		}).Infof("Confirming item update...")
 		live, err := c.LoadItem(item.SellerSKU)
 		if err != nil {
 			log.WithFields(log.Fields{
-				"tenant":     c.Tenant().Name,
+				"tenant":     c.Name,
 				"seller_sku": item.SellerSKU,
 			}).Errorf("Confirming item update: %v", err)
 		}
@@ -195,7 +196,7 @@ func (c *Client) loadItemsFromProduct(id int) ([]*models.Item, error) {
 			continue
 		}
 		if item.Get("item_sku").String() == "" {
-			log.Warningf("skipping item %d, empty sku", id)
+			log.Debugf("skipping item %d, empty sku", id)
 			continue
 		}
 		items = append(items, &models.Item{

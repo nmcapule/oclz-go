@@ -66,7 +66,7 @@ func (c *Client) LoadItem(sku string) (*models.Item, error) {
 // This only implements updating the product stock.
 func (c *Client) SaveItem(item *models.Item) error {
 	log.Warn("Cannot sync %q: SaveItem is unimplemented in %s", item.SellerSKU, c.Name)
-	return nil
+	return models.ErrUnimplemented
 }
 
 func (c *Client) loadCatalogProductPages(query url.Values) ([]*models.Item, error) {
@@ -97,10 +97,11 @@ func (c *Client) loadCatalogProductPages(query url.Values) ([]*models.Item, erro
 			})
 		}
 		log.WithFields(log.Fields{
+			"tenant": c.Name,
 			"items":  len(items),
 			"offset": base.Get("data.offset").Int(),
 			"total":  base.Get("data.total").Int(),
-		}).Infof("%s: loading items", c.Name)
+		}).Infof("Loading fresh items")
 
 		if page == int(base.Get("data.pages").Int()) {
 			break
@@ -133,10 +134,11 @@ func (c *Client) loadSaleOrderPages(query url.Values) (*gjson.Result, error) {
 			})
 		}
 		log.WithFields(log.Fields{
+			"tenant": c.Name,
 			"items":  len(orders),
 			"offset": base.Get("data.offset").Int(),
 			"total":  base.Get("data.total").Int(),
-		}).Infof("%s: loading sale orders", c.Name)
+		}).Infof("Loading sale orders")
 
 		if page == int(base.Get("data.pages").Int()) {
 			break
