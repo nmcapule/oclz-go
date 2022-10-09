@@ -19,16 +19,39 @@ type Syncer struct {
 	Dao             *daos.Dao
 	Tenants         map[string]models.IntegrationClient
 	IntentTenant    models.IntegrationClient
+	Config          Config
+	Logger          *log.Logger
 }
 
 // NewSyncer creates a new syncer instance.
-func NewSyncer(dao *daos.Dao, tenantGroupName string) (*Syncer, error) {
+func NewSyncer(dao *daos.Dao, tenantGroupName string, config Config) (*Syncer, error) {
+	// Setup logger from standard logger. Note that this affects **all** logrus
+	// loggers within the application.
+	// TODO(nmcapule): Inject to every service that needs to log.
+	logger := log.StandardLogger()
+	logger.SetReportCaller(true)
+	logger.AddHook(&LogHook{
+		Dao: dao,
+		LogLevels: []log.Level{
+			log.InfoLevel,
+			log.WarnLevel,
+			log.ErrorLevel,
+			log.FatalLevel,
+			log.PanicLevel,
+		},
+	})
+
 	s := &Syncer{
 		TenantGroupName: tenantGroupName,
 		Dao:             dao,
+		Config:          config,
+		Logger:          logger,
 	}
 	err := s.registerTenantGroup(tenantGroupName)
-	return s, err
+	if err != nil {
+		return nil, fmt.Errorf("register tenant group: %v", err)
+	}
+	return s, nil
 }
 
 // registerTenantGroup registers all tenants under the given tenant group name.

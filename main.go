@@ -16,7 +16,9 @@ func main() {
 		if *noSync {
 			return nil
 		}
-		syncer, err := syncer.NewSyncer(app.Dao(), "circuit.rocks")
+		syncer, err := syncer.NewSyncer(app.Dao(), "circuit.rocks", syncer.Config{
+			ContinueOnSyncItemError: true,
+		})
 		if err != nil {
 			log.Fatalf("instantiate syncer: %v", err)
 		}
