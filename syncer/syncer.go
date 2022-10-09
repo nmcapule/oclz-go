@@ -24,7 +24,7 @@ type Syncer struct {
 }
 
 // NewSyncer creates a new syncer instance.
-func NewSyncer(dao *daos.Dao, tenantGroupName string, config Config) (*Syncer, error) {
+func NewSyncer(dao *daos.Dao, tenantGroupName string) (*Syncer, error) {
 	// Setup logger from standard logger. Note that this affects **all** logrus
 	// loggers within the application.
 	// TODO(nmcapule): Inject to every service that needs to log.
@@ -44,7 +44,6 @@ func NewSyncer(dao *daos.Dao, tenantGroupName string, config Config) (*Syncer, e
 	s := &Syncer{
 		TenantGroupName: tenantGroupName,
 		Dao:             dao,
-		Config:          config,
 		Logger:          logger,
 	}
 	err := s.registerTenantGroup(tenantGroupName)
@@ -56,6 +55,7 @@ func NewSyncer(dao *daos.Dao, tenantGroupName string, config Config) (*Syncer, e
 
 // registerTenantGroup registers all tenants under the given tenant group name.
 func (s *Syncer) registerTenantGroup(tenantGroupName string) error {
+	// Load tenant gruop.
 	groups, err := s.Dao.FindCollectionByNameOrId("tenant_groups")
 	if err != nil {
 		return err
@@ -64,6 +64,12 @@ func (s *Syncer) registerTenantGroup(tenantGroupName string) error {
 	if err != nil {
 		return err
 	}
+	// Set config from tenant group.
+	if err := s.loadConfigFromGroup(group); err != nil {
+		return fmt.Errorf("loading tenant group config: %v", err)
+	}
+
+	// Load tenants.
 	tenants, err := s.Dao.FindCollectionByNameOrId("tenants")
 	if err != nil {
 		return err
