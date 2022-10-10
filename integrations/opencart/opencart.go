@@ -65,6 +65,11 @@ func (c *Client) LoadItem(sku string) (*models.Item, error) {
 // SaveItem saves item info for a single SKU.
 // This only implements updating the product stock.
 func (c *Client) SaveItem(item *models.Item) error {
+	// TODO(ncapule): This relies on plugin: Quick Editor!
+	// base, err := c.request(&http.Request{
+	// 	Method: http.MethodGet,
+	// 	URL:    c.url("/tool/stocksetting4/savequantity", query),
+	// }, responseParser(scrapeCatalogProduct))
 	log.Warn("Cannot sync %q: SaveItem is unimplemented in %s", item.SellerSKU, c.Name)
 	return models.ErrUnimplemented
 }
@@ -93,6 +98,7 @@ func (c *Client) loadCatalogProductPages(query url.Values) ([]*models.Item, erro
 					"product_name": row.Get("product_name").String(),
 					"price":        row.Get("price").Float(),
 					"status":       row.Get("status").String(),
+					"product_id":   row.Get("product_id").Int(),
 				}),
 			})
 		}

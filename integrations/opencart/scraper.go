@@ -26,6 +26,7 @@ func scrapeCatalogProduct(input string) (*gjson.Result, error) {
 			"product_name": strings.TrimSpace(s.Find("td:nth-child(3)").Text()),
 			"price":        strings.TrimSpace(s.Find("td:nth-child(5)").Text()),
 			"status":       strings.TrimSpace(s.Find("td:nth-child(7)").Text()),
+			"product_id":   strings.TrimSpace(s.Find("td:nth-child(1) > input").AttrOr("value", "")),
 		})
 	})
 	tokens := pagesRe.FindStringSubmatch(doc.Find("#form-product + div > div + div").Text())
