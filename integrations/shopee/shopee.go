@@ -186,8 +186,7 @@ func (c *Client) loadItemsFromProduct(id int) ([]*models.Item, error) {
 	var items []*models.Item
 	for _, item := range base.Get("response.item_list").Array() {
 		// If model exists, load from models endpoint instead.
-		// This doesn't work unfortunately :/ No item has its `has_model == true`.
-		if base.Get("response.has_model").Bool() {
+		if item.Get("has_model").Bool() {
 			parsed, err := c.loadItemsFromModelOfItemID(id, item)
 			if err != nil {
 				return nil, fmt.Errorf("load from model: %v", err)
