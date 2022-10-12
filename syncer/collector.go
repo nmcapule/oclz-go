@@ -27,7 +27,8 @@ func (s *Syncer) CollectAllItems() error {
 		if err != nil {
 			return fmt.Errorf("collect tenant items for %q: %v", tenant.Tenant().Name, err)
 		}
-		for i, item := range items {
+		for _, item := range items {
+			item := item
 			_, err := s.tenantInventory(tenant.Tenant().Name, item.SellerSKU)
 			// If not found, means that this is the first time we detected
 			// the item on this tenant.
@@ -35,14 +36,9 @@ func (s *Syncer) CollectAllItems() error {
 				log.WithFields(log.Fields{
 					"tenant":     tenant.Tenant().Name,
 					"seller_sku": item.SellerSKU,
-				}).Infof("Recording tenant inventory")
-				// Get fresh copy from the tenant.
-				fresh, err := tenant.LoadItem(item.SellerSKU)
-				if err != nil {
-					return fmt.Errorf("get fresh item: %v", err)
-				}
+				}).Infof("Recording tenant inventory for the first time")
 				// Save fresh copy to the tenant inventory.
-				err = s.saveTenantInventory(tenant.Tenant().Name, fresh)
+				err = s.saveTenantInventory(tenant.Tenant().Name, item)
 				if err != nil {
 					return fmt.Errorf("save fresh item: %v", err)
 				}
@@ -50,7 +46,7 @@ func (s *Syncer) CollectAllItems() error {
 				return fmt.Errorf("retrieving cached item for %s: %v", item.SellerSKU, err)
 			}
 			if _, ok := intentItemsLookup[item.SellerSKU]; !ok {
-				itemsOutsideIntent[item.SellerSKU] = items[i]
+				itemsOutsideIntent[item.SellerSKU] = item
 			}
 		}
 	}

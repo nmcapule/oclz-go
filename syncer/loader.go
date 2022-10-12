@@ -37,8 +37,10 @@ func LoadClient(dao *daos.Dao, tenantName string) (models.IntegrationClient, err
 			return nil, err
 		}
 		return &intent.Client{
-			BaseTenant: tenant,
-			Dao:        dao,
+			BaseDatabaseTenant: &models.BaseDatabaseTenant{
+				BaseTenant: tenant,
+				Dao:        dao,
+			},
 		}, nil
 	case opencart.Vendor:
 		var config opencart.Config
@@ -93,7 +95,11 @@ func LoadClient(dao *daos.Dao, tenantName string) (models.IntegrationClient, err
 			return nil, err
 		}
 		return &shopee.Client{
-			BaseTenant:  tenant,
+			BaseTenant: tenant,
+			DatabaseTenant: &models.BaseDatabaseTenant{
+				BaseTenant: tenant,
+				Dao:        dao,
+			},
 			Config:      &config,
 			Credentials: credentials,
 		}, nil

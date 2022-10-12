@@ -33,14 +33,18 @@ func (s *Syncer) Start() error {
 	}
 
 	go scheduler.Loop(func(quit chan struct{}) {
-		log.Infoln("collect inventory...")
+		log.Infoln("Start collecting inventory from all tenants...")
+		if s.IntentTenant == nil {
+			log.Warnf("Skipping item collection. No active intent tenant.")
+			return
+		}
 		if err := s.CollectAllItems(); err != nil {
-			log.Fatalf("collect all live tenant items: %v", err)
+			log.Fatalf("Collect all live tenant items: %v", err)
 		}
 	}, scheduler.LoopConfig{RetryWait: 24 * time.Hour})
 
 	go scheduler.Loop(func(quit chan struct{}) {
-		log.Infoln("refreshing oauth2 credentials...")
+		log.Infoln("Refreshing oauth2 credentials of all tenants...")
 		if err := s.RefreshCredentials(); err != nil {
 			log.Fatalf("Refreshing all tenants credentials: %v", err)
 		}
@@ -50,17 +54,17 @@ func (s *Syncer) Start() error {
 		log.Info("Sync inventory...")
 		items, err := s.IntentTenant.CollectAllItems()
 		if err != nil {
-			log.Fatalf("collect all intent items: %v", err)
+			log.Fatalf("Collect all intent items: %v", err)
 		}
 		for i, item := range items {
 			log.WithFields(log.Fields{
 				"seller_sku": item.SellerSKU,
 				"index":      i,
 				"total":      len(items),
-			}).Infof("Syncing item")
+			}).Debugln("Syncing item")
 			err := s.SyncItem(item.SellerSKU)
 			if err != nil {
-				log.Fatalf("syncing %q: %v", item.SellerSKU, err)
+				log.Fatalf("Syncing %q: %v", item.SellerSKU, err)
 			}
 		}
 	}, scheduler.LoopConfig{InitialWait: 1 * time.Hour, RetryWait: 3 * time.Hour})
