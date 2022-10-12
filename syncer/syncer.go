@@ -200,7 +200,7 @@ func (s *Syncer) saveTenantInventory(tenantName string, item *models.Item) error
 		log.WithFields(log.Fields{
 			"tenant":     tenantName,
 			"seller_sku": item.SellerSKU,
-		}).Errorf("Item already exists! Updating instead...")
+		}).Debugf("Item already exists! Updating instead...")
 		item.ID = records[0].GetId()
 	}
 	return s.Dao.SaveRecord(item.ToRecord(collection))
