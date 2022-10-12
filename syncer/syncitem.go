@@ -78,6 +78,7 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 				log.WithFields(log.Fields{
 					"seller_sku": sellerSKU,
 					"tenant":     tenant.Tenant().Name,
+					"error":      err.Error(),
 				}).Errorf("Failed to save item info. Skipping.")
 				continue
 			}

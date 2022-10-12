@@ -113,24 +113,24 @@ func (c *Client) LoadItem(sku string) (*models.Item, error) {
 	return items[0], nil
 }
 
-// SaveItem saves item info for a single SKU.
-// This only implements updating the product stock.
+// SaveItem saves item info for a single SKU. This only implements updating
+// the product stock. Shopee API documentation:
+// https://open.shopee.com/documents/v2/v2.product.update_stock?module=89&type=1
 func (c *Client) SaveItem(item *models.Item) error {
-	itemID := item.TenantProps.Get("item_id").Int()
 	_, err := c.request(&http.Request{
 		Method: http.MethodPost,
 		URL:    c.url("/api/v2/product/update_stock", nil),
 		Body: io.NopCloser(strings.NewReader(utils.GJSONFrom(map[string]any{
-			"item_id": itemID,
-			"stock_list": []map[string]any{
-				{
-					"seller_stock": []map[string]any{
-						{
-							"stock": item.Stocks,
-						},
-					},
-				},
-			},
+			"item_id": item.TenantProps.Get("item_id").Int(),
+			"stock_list": []map[string]any{{
+				// Shopee API allows model_id = 0, which means that this SKU
+				// does not have a model associated to it, and can ignore this
+				// field safely.
+				"model_id": item.TenantProps.Get("model_id").Int(),
+				"seller_stock": []map[string]any{{
+					"stock": item.Stocks,
+				}},
+			}},
 		}).String())),
 	}, signatureMode(signatureModeShopAPI))
 	if err != nil {
