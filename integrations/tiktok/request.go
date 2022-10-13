@@ -67,6 +67,9 @@ func (c *Client) request(req *http.Request, opts ...requestOption) (*gjson.Resul
 		query.Set("access_token", c.Credentials.AccessToken)
 	}
 	req.URL.RawQuery = query.Encode()
+	req.Header = map[string][]string{
+		"Content-Type": {"application/json"},
+	}
 
 	retry := 3
 	var gres gjson.Result
