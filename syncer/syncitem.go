@@ -73,13 +73,20 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 			continue
 		}
 		item.Stocks = targetStocks
+
+		log.WithFields(log.Fields{
+			"seller_sku": sellerSKU,
+			"tenant":     tenant.Tenant().Name,
+			"stocks":     targetStocks,
+		}).Infoln("Update item stocks")
+
 		if err := tenant.SaveItem(item); err != nil {
 			if s.Config.ContinueOnSyncItemError {
 				log.WithFields(log.Fields{
 					"seller_sku": sellerSKU,
 					"tenant":     tenant.Tenant().Name,
 					"error":      err.Error(),
-				}).Errorf("Failed to save item info. Skipping.")
+				}).Errorln("Failed to save item info. Skipping.")
 				continue
 			}
 			return fmt.Errorf("saving live item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)

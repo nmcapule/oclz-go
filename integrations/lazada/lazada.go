@@ -135,13 +135,13 @@ func (c *Client) SaveItem(item *models.Item) error {
 		log.WithFields(log.Fields{
 			"tenant":     c.Tenant().Name,
 			"seller_sku": item.SellerSKU,
-		}).Infof("Confirming item update...")
+		}).Debugln("Confirming item update...")
 		live, err := c.LoadItem(item.SellerSKU)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"tenant":     c.Tenant().Name,
 				"seller_sku": item.SellerSKU,
-			}).Errorf("Confirming item update: %v", err)
+			}).Errorf("Failed to confirm item update: %v", err)
 		}
 		return live.Stocks == item.Stocks
 	}, scheduler.RetryConfig{
