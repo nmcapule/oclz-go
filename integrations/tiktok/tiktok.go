@@ -8,10 +8,12 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/nmcapule/oclz-go/integrations/models"
 	"github.com/nmcapule/oclz-go/oauth2"
 	"github.com/nmcapule/oclz-go/utils"
+	"github.com/nmcapule/oclz-go/utils/scheduler"
 	"github.com/tidwall/gjson"
 
 	log "github.com/sirupsen/logrus"
@@ -161,22 +163,45 @@ func (c *Client) LoadItem(sku string) (*models.Item, error) {
 // SaveItem saves item info for a single SKU.
 // This only implements updating the product stock.
 func (c *Client) SaveItem(item *models.Item) error {
-	log.Warnf("Cannot sync %q: SaveItem is unimplemented in %s", item.SellerSKU, c.Name)
-	// request := map[string]interface{}{
-	// 	"product_id": item.TenantProps.Get("product_id").String(),
-	// 	"skus": []map[string]interface{}{
-	// 		{
-	// 			"id": item.TenantProps.Get("sku_id").String(),
-	// 			"stock_infos": []map[string]interface{}{
-	// 				{
-	// 					"available_stock": item.Stocks,
-	// 					"warehouse_id":    c.Config.WarehouseID,
-	// 				},
-	// 			},
-	// 		},
-	// 	},
-	// }
-	// _, err := c.put("/api/products/stocks", request, nil)
-	// return err
-	return models.ErrUnimplemented
+	_, err := c.request(&http.Request{
+		Method: http.MethodPut,
+		URL:    c.url("/api/products/stocks", nil),
+		Body: io.NopCloser(strings.NewReader(utils.GJSONFrom(map[string]any{
+			"product_id": item.TenantProps.Get("product_id").String(),
+			"skus": []map[string]interface{}{
+				{
+					"id": item.TenantProps.Get("sku_id").String(),
+					"stock_infos": []map[string]interface{}{
+						{
+							"available_stock": item.Stocks,
+							"warehouse_id":    c.Config.WarehouseID,
+						},
+					},
+				},
+			},
+		}).String())),
+	})
+	if err != nil {
+		return fmt.Errorf("error response: %v", err)
+	}
+
+	// Poll until the update is confirmed propagated to Tiktok.
+	return scheduler.Retry(func() bool {
+		log.WithFields(log.Fields{
+			"tenant":     c.Name,
+			"seller_sku": item.SellerSKU,
+		}).Debugln("Confirming item update...")
+		live, err := c.LoadItem(item.SellerSKU)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"tenant":     c.Name,
+				"seller_sku": item.SellerSKU,
+			}).Errorf("Failed to confirm item update: %v", err)
+		}
+		return live.Stocks == item.Stocks
+	}, scheduler.RetryConfig{
+		RetryWait:       time.Second,
+		RetryLimit:      10,
+		BackoffMultiply: 2,
+	})
 }
