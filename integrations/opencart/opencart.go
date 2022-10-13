@@ -26,7 +26,8 @@ type Config struct {
 // Client is a opencart client.
 type Client struct {
 	*models.BaseTenant
-	Config *Config
+	DatabaseTenant *models.BaseDatabaseTenant
+	Config         *Config
 }
 
 // CollectAllItems collects and returns all items registered in this client.
@@ -65,13 +66,24 @@ func (c *Client) LoadItem(sku string) (*models.Item, error) {
 // SaveItem saves item info for a single SKU.
 // This only implements updating the product stock.
 func (c *Client) SaveItem(item *models.Item) error {
+	cached, err := c.DatabaseTenant.LoadItem(item.SellerSKU)
+	if err != nil {
+		return fmt.Errorf("retrieving db tenant item: %v", err)
+	}
+	productID := cached.TenantProps.Get("product_id").Int()
+
 	// TODO(ncapule): This relies on plugin: Quick Editor!
-	// base, err := c.request(&http.Request{
-	// 	Method: http.MethodGet,
-	// 	URL:    c.url("/tool/stocksetting4/savequantity", query),
-	// }, responseParser(scrapeCatalogProduct))
-	log.Warn("Cannot sync %q: SaveItem is unimplemented in %s", item.SellerSKU, c.Name)
-	return models.ErrUnimplemented
+	_, err = c.request(&http.Request{
+		Method: http.MethodGet,
+		URL: c.url("/tool/stocksetting4/savequantity", url.Values{
+			"id":    []string{strconv.Itoa(int(productID))},
+			"value": []string{strconv.Itoa(int(item.Stocks))},
+		}),
+	})
+	if err != nil {
+		return fmt.Errorf("updating item: %v", err)
+	}
+	return nil
 }
 
 func (c *Client) loadCatalogProductPages(query url.Values) ([]*models.Item, error) {

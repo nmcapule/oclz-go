@@ -50,7 +50,11 @@ func LoadClient(dao *daos.Dao, tenantName string) (models.IntegrationClient, err
 		}
 		return &opencart.Client{
 			BaseTenant: tenant,
-			Config:     &config,
+			DatabaseTenant: &models.BaseDatabaseTenant{
+				BaseTenant: tenant,
+				Dao:        dao,
+			},
+			Config: &config,
 		}, nil
 	case tiktok.Vendor:
 		var config tiktok.Config
