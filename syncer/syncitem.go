@@ -27,6 +27,14 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 		}
 		current, err := tenant.LoadItem(sellerSKU)
 		if err != nil {
+			if s.Config.ContinueOnSyncItemError {
+				log.WithFields(log.Fields{
+					"seller_sku": sellerSKU,
+					"tenant":     tenant.Tenant().Name,
+					"error":      err.Error(),
+				}).Errorln("Failed to load item info. Skipping.")
+				continue
+			}
 			return fmt.Errorf("loading live item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
 		}
 		totalDelta += current.Stocks - cached.Stocks
