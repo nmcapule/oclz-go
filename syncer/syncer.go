@@ -118,7 +118,7 @@ func (s *Syncer) RefreshCredentials() error {
 		if cm == nil {
 			log.WithFields(log.Fields{
 				"tenant": tenant.Tenant().Name,
-			}).Warningf("Skip credentials refresh, no credentials manager")
+			}).Debugln("Skip credentials refresh, no credentials manager")
 			continue
 		}
 
@@ -126,13 +126,13 @@ func (s *Syncer) RefreshCredentials() error {
 		if cm.CredentialsExpiry().Sub(now) >= expiryThreshold {
 			log.WithFields(log.Fields{
 				"tenant": tenant.Tenant().Name,
-			}).Infof("Skip credentials refresh, not yet near expiry")
+			}).Debugln("Skip credentials refresh, not yet near expiry")
 			continue
 		}
 
 		log.WithFields(log.Fields{
 			"tenant": tenant.Tenant().Name,
-		}).Infof("Refreshing credentials")
+		}).Debugln("Refreshing credentials")
 		credentials, err := cm.RefreshCredentials()
 		if err != nil {
 			return fmt.Errorf("refreshing credentials for %s: %v", tenant.Tenant().Name, err)
