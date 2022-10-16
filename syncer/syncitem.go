@@ -2,7 +2,6 @@ package syncer
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/nmcapule/oclz-go/integrations/models"
 
@@ -25,7 +24,7 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 		if err != nil {
 			return fmt.Errorf("loading cached item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
 		}
-		current, err := tenant.LoadItem(sellerSKU)
+		live, err := tenant.LoadItem(sellerSKU)
 		if err != nil {
 			if s.Config.ContinueOnSyncItemError {
 				log.WithFields(log.Fields{
@@ -37,27 +36,19 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 			}
 			return fmt.Errorf("loading live item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
 		}
-		totalDelta += current.Stocks - cached.Stocks
-		log.WithFields(log.Fields{
-			"tenant":     tenant.Tenant().Name,
-			"seller_sku": sellerSKU,
-		}).Debugln("Load fresh item")
-
-		if totalDelta != 0 {
-			err := s.saveInventoryDelta(&inventoryDelta{
-				Inventory: cached.ID,
-				Field:     "stocks",
-				NValue:    float64(current.Stocks),
-				SValue:    strconv.Itoa(current.Stocks),
-			})
-			if err != nil {
-				return fmt.Errorf("saving inventory delta for %s (%s): %v", sellerSKU, cached.ID, err)
-			}
+		totalDelta += live.Stocks - cached.Stocks
+		if live.Stocks != cached.Stocks {
+			log.WithFields(log.Fields{
+				"seller_sku": sellerSKU,
+				"tenant":     tenant.Tenant().Name,
+				"previous":   cached.Stocks,
+				"stocks":     live.Stocks,
+			}).Infoln("Pull update from live item stocks")
 		}
 
-		current.ID = cached.ID
-		current.Created = cached.Created
-		tenantItemMap[tenant.Tenant().Name] = current
+		live.ID = cached.ID
+		live.Created = cached.Created
+		tenantItemMap[tenant.Tenant().Name] = live
 	}
 
 	targetStocks := tenantItemMap[s.IntentTenant.Tenant().Name].Stocks
@@ -85,8 +76,9 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 		log.WithFields(log.Fields{
 			"seller_sku": sellerSKU,
 			"tenant":     tenant.Tenant().Name,
+			"previous":   item.Stocks,
 			"stocks":     targetStocks,
-		}).Infoln("Update item stocks")
+		}).Infoln("Push update to live item stocks")
 
 		if err := tenant.SaveItem(item); err != nil {
 			if s.Config.ContinueOnSyncItemError {
