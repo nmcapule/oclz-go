@@ -63,7 +63,7 @@ func (c *Client) CollectAllItems() ([]*models.Item, error) {
 			"items":  len(items),
 			"offset": offset,
 			"total":  base.Get("data.total_products").Int(),
-		}).Infof("Loading fresh items")
+		}).Debugln("Loading fresh items")
 
 		offset += limit
 		if offset >= int(base.Get("data.total_products").Int()) {
@@ -142,6 +142,7 @@ func (c *Client) SaveItem(item *models.Item) error {
 				"tenant":     c.Tenant().Name,
 				"seller_sku": item.SellerSKU,
 			}).Errorf("Failed to confirm item update: %v", err)
+			return false
 		}
 		return live.Stocks == item.Stocks
 	}, scheduler.RetryConfig{

@@ -17,3 +17,6 @@ __debug_bin
 
 pb_data/
 pb_public/
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/

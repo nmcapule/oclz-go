@@ -1,6 +1,6 @@
 [
     {
-        "id": "Kdep9T0CaQYvGlv",
+        "id": "systemprofiles0",
         "name": "profiles",
         "system": true,
         "listRule": "userId = @request.user.id",
@@ -10,7 +10,7 @@
         "deleteRule": null,
         "schema": [
             {
-                "id": "eov87bpz",
+                "id": "pbfielduser",
                 "name": "userId",
                 "type": "user",
                 "system": true,
@@ -22,7 +22,7 @@
                 }
             },
             {
-                "id": "rzanfppq",
+                "id": "pbfieldname",
                 "name": "name",
                 "type": "text",
                 "system": false,
@@ -35,7 +35,7 @@
                 }
             },
             {
-                "id": "b3fbmuux",
+                "id": "pbfieldavatar",
                 "name": "avatar",
                 "type": "file",
                 "system": false,
@@ -275,6 +275,15 @@
                     "max": null,
                     "pattern": ""
                 }
+            },
+            {
+                "id": "h0ahlqj2",
+                "name": "config",
+                "type": "json",
+                "system": false,
+                "required": false,
+                "unique": false,
+                "options": {}
             }
         ]
     },
@@ -313,8 +322,8 @@
         ]
     },
     {
-        "id": "htir9h90tedk1if",
-        "name": "tenant_inventory_delta",
+        "id": "mt6j6fqkkprlahl",
+        "name": "custom_uploads",
         "system": false,
         "listRule": null,
         "viewRule": null,
@@ -323,47 +332,82 @@
         "deleteRule": null,
         "schema": [
             {
-                "id": "klzrkwcb",
-                "name": "tenant_inventory",
-                "type": "relation",
+                "id": "e5td95z3",
+                "name": "name",
+                "type": "text",
                 "system": false,
                 "required": true,
-                "unique": false,
+                "unique": true,
                 "options": {
-                    "maxSelect": 1,
-                    "collectionId": "G7xdX7GyYCCKnSr",
-                    "cascadeDelete": true
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
                 }
             },
             {
-                "id": "z0ry01h4",
-                "name": "field",
-                "type": "select",
+                "id": "83eofboh",
+                "name": "file",
+                "type": "file",
                 "system": false,
-                "required": true,
+                "required": false,
                 "unique": false,
                 "options": {
                     "maxSelect": 1,
-                    "values": [
-                        "stocks"
-                    ]
+                    "maxSize": 5242880,
+                    "mimeTypes": [],
+                    "thumbs": []
                 }
-            },
+            }
+        ]
+    },
+    {
+        "id": "7sdns2d94i3enp8",
+        "name": "custom_logs",
+        "system": false,
+        "listRule": null,
+        "viewRule": null,
+        "createRule": null,
+        "updateRule": null,
+        "deleteRule": null,
+        "schema": [
             {
-                "id": "cfhdjavp",
-                "name": "nvalue",
-                "type": "number",
+                "id": "f7xmqgst",
+                "name": "message",
+                "type": "text",
                 "system": false,
                 "required": false,
                 "unique": false,
                 "options": {
                     "min": null,
-                    "max": null
+                    "max": null,
+                    "pattern": ""
                 }
             },
             {
-                "id": "orlv3g7u",
-                "name": "svalue",
+                "id": "8hjfdbyy",
+                "name": "fields",
+                "type": "json",
+                "system": false,
+                "required": false,
+                "unique": false,
+                "options": {}
+            },
+            {
+                "id": "ae5lcjck",
+                "name": "level",
+                "type": "text",
+                "system": false,
+                "required": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "id": "6d4dijxp",
+                "name": "caller",
                 "type": "text",
                 "system": false,
                 "required": false,
