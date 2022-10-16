@@ -32,10 +32,11 @@ func (s *Syncer) CollectAllItems() error {
 		if err != nil {
 			return fmt.Errorf("collect tenant items for %q: %v", tenant.Tenant().Name, err)
 		}
+		elapsed := time.Since(start)
 		log.WithFields(log.Fields{
-			"tenant": tenant.Tenant().Name,
-			"elapsed": time.Since(start),
-		}).Infoln("Finished live items collection.")
+			"tenant":  tenant.Tenant().Name,
+			"elapsed": elapsed,
+		}).Infof("Finished live items collection after %s.", elapsed.String())
 
 		for _, item := range items {
 			item := item
