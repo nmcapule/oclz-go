@@ -71,7 +71,6 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 		if item.Stocks == targetStocks {
 			continue
 		}
-		item.Stocks = targetStocks
 
 		log.WithFields(log.Fields{
 			"seller_sku": sellerSKU,
@@ -79,6 +78,8 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 			"previous":   item.Stocks,
 			"stocks":     targetStocks,
 		}).Infoln("Push update to live item stocks")
+		
+		item.Stocks = targetStocks
 
 		if err := tenant.SaveItem(item); err != nil {
 			if s.Config.ContinueOnSyncItemError {
