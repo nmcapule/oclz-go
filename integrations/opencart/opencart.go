@@ -119,7 +119,7 @@ func (c *Client) loadCatalogProductPages(query url.Values) ([]*models.Item, erro
 			"items":  len(items),
 			"offset": base.Get("data.offset").Int(),
 			"total":  base.Get("data.total").Int(),
-		}).Infof("Loading fresh items")
+		}).Debugln("Loading fresh items")
 
 		if page == int(base.Get("data.pages").Int()) {
 			break
@@ -156,7 +156,7 @@ func (c *Client) loadSaleOrderPages(query url.Values) (*gjson.Result, error) {
 			"items":  len(orders),
 			"offset": base.Get("data.offset").Int(),
 			"total":  base.Get("data.total").Int(),
-		}).Infof("Loading sale orders")
+		}).Debugln("Loading sale orders")
 
 		if page == int(base.Get("data.pages").Int()) {
 			break
