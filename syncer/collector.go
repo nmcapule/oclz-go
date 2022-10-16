@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/nmcapule/oclz-go/integrations/models"
 
@@ -23,10 +24,19 @@ func (s *Syncer) CollectAllItems() error {
 	// Collect all items that are not intent items.
 	itemsOutsideIntent := make(map[string]*models.Item)
 	for _, tenant := range s.nonIntentTenants() {
+		log.WithFields(log.Fields{
+			"tenant": tenant.Tenant().Name,
+		}).Infoln("Starting live items collection...")
+		start := time.Now()
 		items, err := tenant.CollectAllItems()
 		if err != nil {
 			return fmt.Errorf("collect tenant items for %q: %v", tenant.Tenant().Name, err)
 		}
+		log.WithFields(log.Fields{
+			"tenant": tenant.Tenant().Name,
+			"elapsed": time.Since(start),
+		}).Infoln("Finished live items collection.")
+
 		for _, item := range items {
 			item := item
 			_, err := s.tenantInventory(tenant.Tenant().Name, item.SellerSKU)
