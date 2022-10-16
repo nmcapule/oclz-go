@@ -16,3 +16,4 @@ __debug_bin
 # vendor/
 
 pb_data/
+pb_public/
