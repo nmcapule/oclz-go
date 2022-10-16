@@ -63,7 +63,7 @@ func (c *Client) CollectAllItems() ([]*models.Item, error) {
 			"items":  len(items),
 			"offset": offset,
 			"total":  base.Get("data.total_products").Int(),
-		}).Infof("Loading fresh items")
+		}).Debugln("Loading fresh items")
 
 		offset += limit
 		if offset >= int(base.Get("data.total_products").Int()) {

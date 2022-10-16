@@ -110,7 +110,7 @@ func (c *Client) CollectAllItems() ([]*models.Item, error) {
 			"items":  len(items),
 			"offset": page * limit,
 			"total":  base.Get("data.total").Int(),
-		}).Infof("Loading fresh items")
+		}).Debugln("Loading fresh items")
 
 		if page*limit >= base.Get("data.total").Int() {
 			break

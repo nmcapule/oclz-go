@@ -70,7 +70,7 @@ func (c *Client) CollectAllItems() ([]*models.Item, error) {
 			"items":  len(items),
 			"offset": offset,
 			"total":  base.Get("response.total_count").Int(),
-		}).Infof("Loading fresh items")
+		}).Debugln("Loading fresh items")
 
 		if !base.Get("response.has_next_page").Bool() {
 			break
