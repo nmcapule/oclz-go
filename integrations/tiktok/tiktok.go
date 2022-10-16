@@ -44,7 +44,7 @@ func (c *Client) parseItemsFromSearch(data gjson.Result) []*models.Item {
 	data.Get("products").ForEach(func(_, product gjson.Result) bool {
 		product.Get("skus").ForEach(func(_, sku gjson.Result) bool {
 			if sku.Get("seller_sku").String() == "" {
-				log.Warningf("Skipping sku_id:%s, empty seller_sku", sku.Get("id").String())
+				log.Debugln("Skipping sku_id:%s, empty seller_sku", sku.Get("id").String())
 				return true
 			}
 
