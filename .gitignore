@@ -16,3 +16,5 @@ __debug_bin
 # vendor/
 
 pb_data/
+frontend/node_modules/
+frontend/.svelte-kit/

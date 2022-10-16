@@ -197,6 +197,7 @@ func (c *Client) SaveItem(item *models.Item) error {
 				"tenant":     c.Name,
 				"seller_sku": item.SellerSKU,
 			}).Errorf("Failed to confirm item update: %v", err)
+			return false
 		}
 		return live.Stocks == item.Stocks
 	}, scheduler.RetryConfig{
