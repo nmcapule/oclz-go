@@ -67,5 +67,5 @@ func (s *Syncer) Start() error {
 				log.Fatalf("Syncing %q: %v", item.SellerSKU, err)
 			}
 		}
-	}, scheduler.LoopConfig{InitialWait: 1 * time.Hour, RetryWait: 3 * time.Hour})
+	}, scheduler.LoopConfig{InitialWait: 1 * time.Hour, RetryWait: 1 * time.Hour})
 }
