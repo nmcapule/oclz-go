@@ -10,7 +10,7 @@ import (
 
 // SyncItem tries to sync a single seller sku across all tenants.
 func (s *Syncer) SyncItem(sellerSKU string) error {
-	tenantItemMap := make(map[string]*models.Item)
+	tenantLiveItemMap := make(map[string]*models.Item)
 	var totalDelta int
 	for _, tenant := range s.Tenants {
 		cached, err := s.tenantInventory(tenant.Tenant().Name, sellerSKU)
@@ -24,6 +24,7 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 		if err != nil {
 			return fmt.Errorf("loading cached item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
 		}
+
 		live, err := tenant.LoadItem(sellerSKU)
 		if err != nil {
 			if s.Config.ContinueOnSyncItemError {
@@ -36,6 +37,7 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 			}
 			return fmt.Errorf("loading live item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
 		}
+
 		totalDelta += live.Stocks - cached.Stocks
 		if live.Stocks != cached.Stocks {
 			log.WithFields(log.Fields{
@@ -48,10 +50,15 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 
 		live.ID = cached.ID
 		live.Created = cached.Created
-		tenantItemMap[tenant.Tenant().Name] = live
+		tenantLiveItemMap[tenant.Tenant().Name] = live
+
+		// Pre-save the live item to the database.
+		if err := s.saveTenantInventory(tenant.Tenant().Name, live); err != nil {
+			return fmt.Errorf("saving cached item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
+		}
 	}
 
-	targetStocks := tenantItemMap[s.IntentTenant.Tenant().Name].Stocks
+	targetStocks := tenantLiveItemMap[s.IntentTenant.Tenant().Name].Stocks
 	targetStocks += totalDelta
 	if targetStocks < 0 {
 		log.Warnf("warning: %s has negative stocks, setting to 0", sellerSKU)
@@ -59,7 +66,7 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 	}
 
 	for _, tenant := range s.Tenants {
-		item, ok := tenantItemMap[tenant.Tenant().Name]
+		live, ok := tenantLiveItemMap[tenant.Tenant().Name]
 		if !ok {
 			log.WithFields(log.Fields{
 				"seller_sku": sellerSKU,
@@ -68,20 +75,20 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 			continue
 		}
 		// Skip update if has the same stock as the intent tenant.
-		if item.Stocks == targetStocks {
+		if live.Stocks == targetStocks {
 			continue
 		}
 
 		log.WithFields(log.Fields{
 			"seller_sku": sellerSKU,
 			"tenant":     tenant.Tenant().Name,
-			"previous":   item.Stocks,
+			"previous":   live.Stocks,
 			"stocks":     targetStocks,
 		}).Infoln("Push update to live item stocks")
-		
-		item.Stocks = targetStocks
 
-		if err := tenant.SaveItem(item); err != nil {
+		live.Stocks = targetStocks
+
+		if err := tenant.SaveItem(live); err != nil {
 			if s.Config.ContinueOnSyncItemError {
 				log.WithFields(log.Fields{
 					"seller_sku": sellerSKU,
@@ -92,7 +99,7 @@ func (s *Syncer) SyncItem(sellerSKU string) error {
 			}
 			return fmt.Errorf("saving live item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
 		}
-		if err := s.saveTenantInventory(tenant.Tenant().Name, item); err != nil {
+		if err := s.saveTenantInventory(tenant.Tenant().Name, live); err != nil {
 			return fmt.Errorf("saving cached item %q from %s: %v", sellerSKU, tenant.Tenant().Name, err)
 		}
 	}
