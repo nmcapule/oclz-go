@@ -13,8 +13,8 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 # Download the static build of Litestream directly into the path & make it executable.
 # This is done in the builder and copied as the chmod doubles the size.
-ADD https://github.com/benbjohnson/litestream/releases/download/v0.3.9/litestream-v0.3.9-linux-amd64-static.tar.gz /tmp/litestream.tar.gz
-RUN tar -C /usr/local/bin -xzf /tmp/litestream.tar.gz
+# ADD https://github.com/benbjohnson/litestream/releases/download/v0.3.9/litestream-v0.3.9-linux-amd64-static.tar.gz /tmp/litestream.tar.gz
+# RUN tar -C /usr/local/bin -xzf /tmp/litestream.tar.gz
 
 # This starts our final image; based on alpine to make it small.
 FROM alpine
@@ -24,7 +24,7 @@ FROM alpine
 
 # Copy executable & Litestream from builder.
 COPY --from=builder /usr/local/bin/myapp /usr/local/bin/myapp
-COPY --from=builder /usr/local/bin/litestream /usr/local/bin/litestream
+# COPY --from=builder /usr/local/bin/litestream /usr/local/bin/litestream
 
 RUN apk add bash
 
@@ -35,7 +35,7 @@ RUN mkdir -p /data
 EXPOSE 8080
 
 # Copy Litestream configuration file & startup script.
-COPY etc/litestream.yml /etc/litestream.yml
+# COPY etc/litestream.yml /etc/litestream.yml
 COPY scripts/run.sh /scripts/run.sh
 
 CMD [ "/scripts/run.sh" ]
