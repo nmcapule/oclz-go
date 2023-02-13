@@ -18,11 +18,7 @@ import (
 
 // LoadClient loads a client depending on the config vendor.
 func LoadClient(dao *daos.Dao, tenantName string) (models.IntegrationClient, error) {
-	collection, err := dao.FindCollectionByNameOrId("tenants")
-	if err != nil {
-		return nil, err
-	}
-	record, err := dao.FindFirstRecordByData(collection, "name", tenantName)
+	record, err := dao.FindFirstRecordByData("tenants", "name", tenantName)
 	if err != nil {
 		return nil, err
 	}

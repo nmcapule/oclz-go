@@ -36,10 +36,10 @@ type BaseTenant struct {
 func TenantFrom(record *pbm.Record) *BaseTenant {
 	return &BaseTenant{
 		ID:          record.GetId(),
-		Name:        record.GetStringDataValue("name"),
-		Vendor:      record.GetStringDataValue("vendor"),
-		Config:      json.RawMessage(record.GetStringDataValue("config")),
-		TenantGroup: record.GetStringDataValue("tenant_group"),
+		Name:        record.GetString("name"),
+		Vendor:      record.GetString("vendor"),
+		Config:      json.RawMessage(record.GetString("config")),
+		TenantGroup: record.GetString("tenant_group"),
 	}
 }
 
@@ -55,11 +55,7 @@ type BaseDatabaseTenant struct {
 }
 
 func (c *BaseDatabaseTenant) CollectAllItems() ([]*Item, error) {
-	collection, err := c.Dao.FindCollectionByNameOrId("tenant_inventory")
-	if err != nil {
-		return nil, err
-	}
-	inventory, err := c.Dao.FindRecordsByExpr(collection, dbx.HashExp{
+	inventory, err := c.Dao.FindRecordsByExpr("tenant_inventory", dbx.HashExp{
 		"tenant": c.ID,
 	})
 	if err != nil {
@@ -73,11 +69,7 @@ func (c *BaseDatabaseTenant) CollectAllItems() ([]*Item, error) {
 }
 
 func (c *BaseDatabaseTenant) LoadItem(sellerSKU string) (*Item, error) {
-	collection, err := c.Dao.FindCollectionByNameOrId("tenant_inventory")
-	if err != nil {
-		return nil, err
-	}
-	inventory, err := c.Dao.FindRecordsByExpr(collection, dbx.HashExp{
+	inventory, err := c.Dao.FindRecordsByExpr("tenant_inventory", dbx.HashExp{
 		"tenant":     c.ID,
 		"seller_sku": sellerSKU,
 	})

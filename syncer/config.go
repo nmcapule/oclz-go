@@ -11,7 +11,7 @@ type Config struct {
 }
 
 func (s *Syncer) loadConfigFromGroup(group *models.Record) error {
-	data := utils.GJSONFrom(group.GetDataValue("config"))
+	data := utils.GJSONFrom(group.Get("config"))
 	s.Config.ContinueOnSyncItemError = data.Get("continue_on_sync_item_error").Bool()
 	return nil
 }

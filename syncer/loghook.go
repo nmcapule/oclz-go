@@ -25,10 +25,10 @@ func (h *LogHook) Fire(entry *log.Entry) error {
 		h.collection = collection
 	}
 	record := models.NewRecord(h.collection)
-	record.SetDataValue("message", entry.Message)
-	record.SetDataValue("fields", entry.Data)
-	record.SetDataValue("level", entry.Level)
-	record.SetDataValue("caller", entry.Caller.Function)
+	record.Set("message", entry.Message)
+	record.Set("fields", entry.Data)
+	record.Set("level", entry.Level)
+	record.Set("caller", entry.Caller.Function)
 	return h.Dao.SaveRecord(record)
 }
 

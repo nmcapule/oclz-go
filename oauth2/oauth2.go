@@ -29,25 +29,21 @@ type Service struct {
 }
 
 func (s *Service) Load(tenant string) (*Credentials, error) {
-	collection, err := s.Dao.FindCollectionByNameOrId("tenant_oauth2")
-	if err != nil {
-		return nil, err
-	}
-	record, err := s.Dao.FindFirstRecordByData(collection, "tenant", tenant)
+	record, err := s.Dao.FindFirstRecordByData("tenant_oauth2", "tenant", tenant)
 	if err != nil {
 		return nil, ErrNoCredentials
 	}
 	return &Credentials{
 		Tenant:       tenant,
-		AccessToken:  record.GetStringDataValue("access_token"),
-		RefreshToken: record.GetStringDataValue("refresh_token"),
-		// Expires:      record.GetTimeDataValue("expires"),
-		// Created:      record.GetTimeDataValue("created"),
-		// Updated:      record.GetTimeDataValue("updated"),
+		AccessToken:  record.GetString("access_token"),
+		RefreshToken: record.GetString("refresh_token"),
+		// Expires:      record.GetTime("expires"),
+		// Created:      record.GetTime("created"),
+		// Updated:      record.GetTime("updated"),
 		// TODO(nmcapule): Above doesn't work, so we do a workaround.
-		Expires: record.GetDateTimeDataValue("expires").Time(),
-		Created: record.GetDateTimeDataValue("created").Time(),
-		Updated: record.GetDateTimeDataValue("updated").Time(),
+		Expires: record.GetDateTime("expires").Time(),
+		Created: record.GetDateTime("created").Time(),
+		Updated: record.GetDateTime("updated").Time(),
 	}, nil
 }
 
@@ -56,7 +52,7 @@ func (s *Service) Save(credentials *Credentials) error {
 	if err != nil {
 		return err
 	}
-	records, err := s.Dao.FindRecordsByExpr(collection, dbx.HashExp{
+	records, err := s.Dao.FindRecordsByExpr(collection.Name, dbx.HashExp{
 		"tenant": credentials.Tenant,
 	})
 	if err != nil {
@@ -72,9 +68,9 @@ func (s *Service) Save(credentials *Credentials) error {
 	} else {
 		record = models.NewRecord(collection)
 	}
-	record.SetDataValue("tenant", credentials.Tenant)
-	record.SetDataValue("access_token", credentials.AccessToken)
-	record.SetDataValue("refresh_token", credentials.RefreshToken)
-	record.SetDataValue("expires", credentials.Expires)
+	record.Set("tenant", credentials.Tenant)
+	record.Set("access_token", credentials.AccessToken)
+	record.Set("refresh_token", credentials.RefreshToken)
+	record.Set("expires", credentials.Expires)
 	return s.Dao.Save(record)
 }

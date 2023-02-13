@@ -56,11 +56,7 @@ func NewSyncer(dao *daos.Dao, tenantGroupName string) (*Syncer, error) {
 // registerTenantGroup registers all tenants under the given tenant group name.
 func (s *Syncer) registerTenantGroup(tenantGroupName string) error {
 	// Load tenant gruop.
-	groups, err := s.Dao.FindCollectionByNameOrId("tenant_groups")
-	if err != nil {
-		return err
-	}
-	group, err := s.Dao.FindFirstRecordByData(groups, "name", tenantGroupName)
+	group, err := s.Dao.FindFirstRecordByData("tenant_groups", "name", tenantGroupName)
 	if err != nil {
 		return err
 	}
@@ -70,11 +66,7 @@ func (s *Syncer) registerTenantGroup(tenantGroupName string) error {
 	}
 
 	// Load tenants.
-	tenants, err := s.Dao.FindCollectionByNameOrId("tenants")
-	if err != nil {
-		return err
-	}
-	records, err := s.Dao.FindRecordsByExpr(tenants, dbx.HashExp{
+	records, err := s.Dao.FindRecordsByExpr("tenants", dbx.HashExp{
 		"tenant_group": group.GetId(),
 	})
 	if err != nil {
@@ -82,10 +74,10 @@ func (s *Syncer) registerTenantGroup(tenantGroupName string) error {
 	}
 
 	for _, tenant := range records {
-		if !tenant.GetBoolDataValue("enable") {
+		if !tenant.GetBool("enable") {
 			continue
 		}
-		if err := s.register(tenant.GetStringDataValue("name")); err != nil {
+		if err := s.register(tenant.GetString("name")); err != nil {
 			return err
 		}
 	}
@@ -156,11 +148,7 @@ func (s *Syncer) nonIntentTenants() []models.IntegrationClient {
 }
 
 func (s *Syncer) tenantInventory(tenantName, sellerSKU string) (*models.Item, error) {
-	collection, err := s.Dao.FindCollectionByNameOrId("tenant_inventory")
-	if err != nil {
-		return nil, err
-	}
-	inventory, err := s.Dao.FindRecordsByExpr(collection, dbx.HashExp{
+	inventory, err := s.Dao.FindRecordsByExpr("tenant_inventory", dbx.HashExp{
 		"tenant":     s.Tenants[tenantName].Tenant().ID,
 		"seller_sku": sellerSKU,
 	})
@@ -189,7 +177,7 @@ func (s *Syncer) saveTenantInventory(tenantName string, item *models.Item) error
 		return err
 	}
 	// Check if the record already exists in the collection.
-	records, err := s.Dao.FindRecordsByExpr(collection, dbx.HashExp{
+	records, err := s.Dao.FindRecordsByExpr(collection.Name, dbx.HashExp{
 		"seller_sku": item.SellerSKU,
 		"tenant":     item.TenantID,
 	})

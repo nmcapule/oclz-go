@@ -21,15 +21,15 @@ type Item struct {
 
 // ItemFrom creates an item from a db record.
 func ItemFrom(record *pbm.Record) *Item {
-	tenantProps := gjson.Parse(record.GetStringDataValue("tenant_props"))
+	tenantProps := gjson.Parse(record.GetString("tenant_props"))
 	return &Item{
 		ID:          record.GetId(),
-		TenantID:    record.GetStringDataValue("tenant"),
-		SellerSKU:   record.GetStringDataValue("seller_sku"),
-		Stocks:      record.GetIntDataValue("stocks"),
+		TenantID:    record.GetString("tenant"),
+		SellerSKU:   record.GetString("seller_sku"),
+		Stocks:      record.GetInt("stocks"),
 		TenantProps: &tenantProps,
-		Created:     record.GetTimeDataValue("created"),
-		Updated:     record.GetTimeDataValue("updated"),
+		Created:     record.GetTime("created"),
+		Updated:     record.GetTime("updated"),
 	}
 }
 
@@ -39,9 +39,9 @@ func (i *Item) ToRecord(collection *pbm.Collection) *pbm.Record {
 	if i.ID != "" {
 		record.Id = i.ID
 	}
-	record.SetDataValue("tenant", i.TenantID)
-	record.SetDataValue("seller_sku", i.SellerSKU)
-	record.SetDataValue("stocks", i.Stocks)
-	record.SetDataValue("tenant_props", i.TenantProps.Raw)
+	record.Set("tenant", i.TenantID)
+	record.Set("seller_sku", i.SellerSKU)
+	record.Set("stocks", i.Stocks)
+	record.Set("tenant_props", i.TenantProps.Raw)
 	return record
 }
