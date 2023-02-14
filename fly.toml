@@ -1,9 +1,19 @@
-# fly.toml file generated for syncer on 2022-09-26T16:25:41Z
+# fly.toml file generated for oclz on 2023-02-14T10:28:09Z
 
-app = "syncer"
+app = "oclz"
 kill_signal = "SIGINT"
 kill_timeout = 5
 processes = []
+
+[env]
+
+[experimental]
+  allowed_public_ports = []
+  auto_rollback = true
+
+[mounts]
+  destination = "/data"
+  source = "data"
 
 [[services]]
   http_checks = []
@@ -30,13 +40,3 @@ processes = []
     interval = "15s"
     restart_limit = 0
     timeout = "2s"
-
-[env]
-
-[experimental]
-  allowed_public_ports = []
-  auto_rollback = true
-
-[mounts]
-  source="syncer_data"
-  destination="/data"

@@ -10,6 +10,6 @@ set -e
 # fi
 
 # # Run litestream with your app as the subprocess.
-# exec litestream replicate -exec "/usr/local/bin/myapp serve --dir=/data --http 0.0.0.0:8080 --nosync=true"
+# exec litestream replicate -exec "/usr/local/bin/myapp serve --dir=/data --http 0.0.0.0:8080 --nosync=false"
 
-/usr/local/bin/myapp serve --dir=/data --http 0.0.0.0:8080 --nosync=true
+/usr/local/bin/myapp serve --dir=/data --http 0.0.0.0:8080 --nosync=false
