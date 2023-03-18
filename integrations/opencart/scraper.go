@@ -9,9 +9,13 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/nmcapule/oclz-go/utils"
 	"github.com/tidwall/gjson"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var pagesRe = regexp.MustCompile(`(?P<offset>\d+) to (?P<offset_limit>\d+) of (?P<total>\d+) \((?P<pages>\d+) Pages\)`)
+
+var MessageNoResults = "No results!"
 
 func scrapeCatalogProduct(input string) (*gjson.Result, error) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(input))
@@ -20,6 +24,11 @@ func scrapeCatalogProduct(input string) (*gjson.Result, error) {
 	}
 	var rows []map[string]interface{}
 	doc.Find("#form-product > div > table > tbody > tr").Each(func(_ int, s *goquery.Selection) {
+		// Check if no results.
+		if strings.TrimSpace(s.Find("td:nth-child(1)").Text()) == MessageNoResults {
+			log.Errorln("No results found for current query!")
+			return
+		}
 		rows = append(rows, map[string]interface{}{
 			"model":        strings.TrimSpace(s.Find("td:nth-child(4)").Text()),
 			"quantity":     strings.TrimSpace(s.Find("td:nth-child(6) > span").Text()),

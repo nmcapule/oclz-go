@@ -121,7 +121,7 @@ func (c *Client) loadCatalogProductPages(query url.Values) ([]*models.Item, erro
 			"total":  base.Get("data.total").Int(),
 		}).Debugln("Loading fresh items")
 
-		if page == int(base.Get("data.pages").Int()) {
+		if page >= int(base.Get("data.pages").Int()) {
 			break
 		}
 		page += 1
