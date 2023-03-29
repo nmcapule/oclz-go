@@ -129,6 +129,9 @@ func (s *Syncer) RefreshCredentials() error {
 		if err != nil {
 			return fmt.Errorf("refreshing credentials for %s: %v", tenant.Tenant().Name, err)
 		}
+		if credentials.RefreshToken == "" || credentials.AccessToken == "" {
+			return fmt.Errorf("got empty tokens! refresh_token=%q, access_token=%q", credentials.RefreshToken, credentials.AccessToken)
+		}
 		err = oauth2Service.Save(credentials)
 		if err != nil {
 			return fmt.Errorf("save credentials for %s: %v", tenant.Tenant().Name, err)

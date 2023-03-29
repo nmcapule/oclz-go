@@ -39,14 +39,14 @@ func (s *Syncer) Start() error {
 			return
 		}
 		if err := s.CollectAllItems(); err != nil {
-			log.Fatalf("Collect all live tenant items: %v", err)
+			log.Errorf("Collect all live tenant items: %v", err)
 		}
 	}, scheduler.LoopConfig{RetryWait: 24 * time.Hour})
 
 	go scheduler.Loop(func(quit chan struct{}) {
 		log.Infoln("Refreshing oauth2 credentials of all tenants...")
 		if err := s.RefreshCredentials(); err != nil {
-			log.Fatalf("Refreshing all tenants credentials: %v", err)
+			log.Errorf("Refreshing all tenants credentials: %v", err)
 		}
 	}, scheduler.LoopConfig{RetryWait: 30 * time.Minute})
 

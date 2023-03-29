@@ -1,0 +1,54 @@
+<html>
+  <head>
+    <title>OCLZ authentication</title>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
+    <style>
+      .auth-container {
+        display: flex;
+        flex-direction: column;
+      }
+      .auth-item {
+        padding: 10px;
+        margin: 2px;
+        border: 1px solid black;
+        border-radius: 6px;
+      }
+      .auth-item > .title {
+        font-size: 1.2em;
+      }
+      .auth-button {
+        height: 30px;
+        background-color: #efefef;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="auth-container">
+      {{ range $name, $tenant := .Tenants }}
+      <!-- -->
+      {{ with $tenant.CredentialsManager }}
+      <div class="auth-item">
+        <div class="title">{{ $tenant.Name }}</div>
+        <div>
+          The credentials for this tenant will expire in
+          <span
+            x-data="{ expiry: luxon.DateTime.fromJSDate(new Date('{{ .CredentialsExpiry }}')) }"
+            x-text="expiry.diffNow(['days', 'hours', 'minutes']).toHuman()"
+          >
+          </span>
+        </div>
+        <a class="auth-button" href="/authentication/reauth/{{ $tenant.Name }}">
+          Refresh credentials
+        </a>
+      </div>
+      {{ end }}
+      <!-- -->
+      {{ end }}
+    </div>
+  </body>
+</html>
